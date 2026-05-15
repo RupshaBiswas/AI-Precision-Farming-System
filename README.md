@@ -1,13 +1,43 @@
 # AI-Precision-Farming-System
 An intelligent precision agriculture system that uses machine learning to provide crop recommendation, yield prediction, weather insights, leaf disease detection, fertilizer advice, and an AI chat and voice assistant through an interactive Streamlit dashboard.
 
-# 🌾 KrishiSakhi  
-### AI-Powered Smart Agriculture Assistant  
+<div align="center">
 
-> Empowering farmers with Artificial Intelligence, Computer Vision, and Real-Time Data Analytics for smarter, sustainable, and data-driven farming.
+<img src="https://readme-typing-svg.demolab.com?font=Poppins&weight=700&size=38&duration=3000&pause=1000&color=32CD32&center=true&vCenter=true&width=1000&lines=🌾+KrishiSakhi+🌾;AI-Powered+Smart+Agriculture+Assistant;Smart+Farming+with+Artificial+Intelligence;Future+of+Sustainable+Agriculture+🚜;Empowering+Farmers+Through+Technology" />
+
+<br>
+
+<img src="https://img.shields.io/badge/AI-Powered-success?style=for-the-badge&logo=openai&logoColor=white" />
+<img src="https://img.shields.io/badge/Machine-Learning-blue?style=for-the-badge&logo=tensorflow&logoColor=white" />
+<img src="https://img.shields.io/badge/Computer-Vision-orange?style=for-the-badge&logo=opencv&logoColor=white" />
+<img src="https://img.shields.io/badge/Smart-Farming-brightgreen?style=for-the-badge" />
+
+<br><br>
+
+<img src="https://cdn-icons-png.flaticon.com/512/2909/2909761.png" width="220"/>
+
+# 🌾 KRISHISAKHI  
+
+### 🚀 AI-Powered Smart Agriculture Ecosystem  
+
+<br>
+
+> ### 🌱 Empowering Farmers with Artificial Intelligence, Computer Vision, and Real-Time Data Analytics  
+> ### 🚜 Building Smarter • Sustainable • Data-Driven Farming Solutions  
+
+<br>
+
+<img src="https://readme-typing-svg.demolab.com?font=Poppins&weight=600&size=24&duration=2500&pause=800&color=00BFFF&center=true&vCenter=true&width=900&lines=🌍+Real-Time+Weather+Intelligence;🍃+AI-Based+Leaf+Disease+Detection;📈+Smart+Yield+Prediction;🤖+AI+Chatbot+Assistance;🌱+Intelligent+Crop+Recommendation" />
+
+</div>
 
 ---
 
+<div align="center">
+
+## ⚡ Transforming Traditional Farming into Intelligent Digital Agriculture ⚡
+
+</div>
 # 🚀 Overview  
 
 KrishiSakhi is an advanced AI-driven smart agriculture platform designed to transform traditional farming using Artificial Intelligence, Machine Learning, Deep Learning, and Real-Time Analytics.
