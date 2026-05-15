@@ -25,7 +25,7 @@ An intelligent precision agriculture system that uses machine learning to provid
 
 <br>
 
-<img src="https://readme-typing-svg.demolab.com?font=Poppins&weight=700&size=24&duration=2000&pause=700&color=00E5FF&center=true&vCenter=true&width=1100&lines=🌱+Smart+Crop+Recommendation;🍃+AI+Leaf+Disease+Detection;📊+Intelligent+Yield+Prediction;☁️+Real-Time+Weather+Forecasting;🤖+AI+Chatbot+Support;🌐+Multilingual+Farmer+Assistance" />
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=28&duration=2500&pause=700&color=39FF14&center=true&vCenter=true&width=1200&lines=AI-Powered+Smart+Agriculture;Future+of+Digital+Farming;Computer+Vision+for+Agriculture;Real-Time+AI+Analytics;Smart+Crop+Recommendation+System;Sustainable+Farming+with+AI" />
 
 </div>
 ## ⚡ Transforming Traditional Farming into Intelligent Digital Agriculture ⚡
