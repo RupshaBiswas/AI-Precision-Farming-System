@@ -377,9 +377,6 @@ I --> J
 |---|---|
 | 🔧 VS Code | Development Environment |
 | 🌐 GitHub | Version Control & Collaboration |
-| 🔄 Git | Source Code Management |
-| 📓 Jupyter Notebook | ML Experiments |
-| ☁️ Google Colab | AI Model Training |
 
 ---
 
