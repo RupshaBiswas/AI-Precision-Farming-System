@@ -1,20 +1,41 @@
 # AI-Precision-Farming-System
 An intelligent precision agriculture system that uses machine learning to provide crop recommendation, yield prediction, weather insights, leaf disease detection, fertilizer advice, and an AI chat and voice assistant through an interactive Streamlit dashboard.
 
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=300&color=0:00C853,25:32CD32,50:00E5FF,75:7C4DFF,100:00C853&text=🌾%20KRISHISAKHI%20🌾&fontSize=65&fontColor=ffffff&fontAlignY=40&animation=twinkling&desc=AI-Powered%20Smart%20Agriculture%20Ecosystem&descAlignY=62&descSize=22" />
+
 <br>
 
-<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3BvNDB0Z2Q1MXR2aXo0M2F4N2R5YjJ5dnl5dXZkNjQ4M3Q4bWl3eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0HlBO7eyXzSZkJri/giphy.gif" width="100%" />
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=900&size=38&duration=2500&pause=800&color=39FF14&center=true&vCenter=true&multiline=true&width=1200&height=140&lines=🚜+FUTURE+OF+INTELLIGENT+FARMING;🤖+ARTIFICIAL+INTELLIGENCE+FOR+AGRICULTURE;🌍+SMART+%2B+SUSTAINABLE+%2B+DATA-DRIVEN+FARMING" />
 
 <br><br>
 
-<img src="https://img.shields.io/badge/🌱_Smart_Farming-00C853?style=for-the-badge" />
-<img src="https://img.shields.io/badge/🤖_Artificial_Intelligence-2962FF?style=for-the-badge" />
-<img src="https://img.shields.io/badge/👁️_Computer_Vision-FF6D00?style=for-the-badge" />
-<img src="https://img.shields.io/badge/📈_Data_Analytics-AA00FF?style=for-the-badge" />
+<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3BvNDB0Z2Q1MXR2aXo0M2F4N2R5YjJ5dnl5dXZkNjQ4M3Q4bWl3eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xT9IgzoKnwFNmISR8I/giphy.gif" width="100%" />
 
 <br><br>
 
+<img src="https://img.shields.io/badge/🌱_SMART_FARMING-00C853?style=for-the-badge&logoColor=white" />
+<img src="https://img.shields.io/badge/🤖_AI_POWERED-2962FF?style=for-the-badge&logoColor=white" />
+<img src="https://img.shields.io/badge/👁️_COMPUTER_VISION-FF6D00?style=for-the-badge&logoColor=white" />
+<img src="https://img.shields.io/badge/📈_REAL_TIME_ANALYTICS-AA00FF?style=for-the-badge&logoColor=white" />
 
+<br><br>
+
+# 🌾 KRISHISAKHI  
+
+### 🚀 AI-POWERED SMART AGRICULTURE ASSISTANT  
+
+<br>
+
+> ## 🌍 Revolutionizing Agriculture Through Artificial Intelligence  
+> ## 🚜 Building the Future of Sustainable Digital Farming  
+
+<br>
+
+<img src="https://readme-typing-svg.demolab.com?font=Poppins&weight=700&size=24&duration=2000&pause=700&color=00E5FF&center=true&vCenter=true&width=1100&lines=🌱+Smart+Crop+Recommendation;🍃+AI+Leaf+Disease+Detection;📊+Intelligent+Yield+Prediction;☁️+Real-Time+Weather+Forecasting;🤖+AI+Chatbot+Support;🌐+Multilingual+Farmer+Assistance" />
+
+</div>
 ## ⚡ Transforming Traditional Farming into Intelligent Digital Agriculture ⚡
 
 </div>
