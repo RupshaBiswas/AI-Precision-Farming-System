@@ -175,33 +175,241 @@ KrishiSakhi follows a scalable **3-Tier Architecture**.
 
 ---
 
-# 🛠️ Technologies Used  
+# 🛠️ TECHNOLOGY STACK OF KRISHISAKHI 🚀  
 
-## 💻 Frontend
-- Streamlit
-- HTML
-- CSS
+<div align="center">
 
-## ⚙️ Backend
-- Python
+# 🌾 KRISHISAKHI  
+### AI-Powered Smart Agriculture Ecosystem  
 
-## 🗄️ Database
-- MongoDB
+<img src="https://skillicons.dev/icons?i=python,tensorflow,pytorch,mongodb,html,css,git,github,vscode" />
 
-## 🤖 Machine Learning & AI
+</div>
+
+---
+
+# ⚡ Core Technologies Behind KrishiSakhi  
+
+<table>
+<tr>
+<td align="center" width="250">
+
+## 🧠 AI & MACHINE LEARNING  
+
+<img src="https://cdn-icons-png.flaticon.com/512/2103/2103633.png" width="90"/>
+
+### Technologies
 - TensorFlow
 - Keras
 - PyTorch
 - Scikit-learn
 - Transformers
 
-## 🌐 APIs & Tools
+### Powers
+✅ Crop Recommendation  
+✅ Disease Detection  
+✅ Yield Prediction  
+✅ AI Chatbot  
+✅ Smart Analytics  
+
+</td>
+
+<td align="center" width="250">
+
+## 👁️ COMPUTER VISION  
+
+<img src="https://cdn-icons-png.flaticon.com/512/2784/2784487.png" width="90"/>
+
+### Technologies
+- OpenCV
+- CNN Models
+- Deep Learning
+
+### Powers
+✅ Leaf Disease Detection  
+✅ Pest Prediction  
+✅ Soil Classification  
+✅ Image Analysis  
+
+</td>
+
+<td align="center" width="250">
+
+## ☁️ CLOUD & APIs  
+
+<img src="https://cdn-icons-png.flaticon.com/512/4144/4144783.png" width="90"/>
+
+### APIs Used
 - OpenWeatherMap API
 - Google Translator API
+
+### Powers
+✅ Weather Forecasting  
+✅ Multilingual Support  
+✅ Real-Time Updates  
+✅ Smart Recommendations  
+
+</td>
+</tr>
+</table>
+
+---
+
+# 🌐 FRONTEND TECHNOLOGIES  
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=html,css,python" />
+
+</div>
+
+<table>
+<tr>
+<td align="center">
+
+### 🎨 Streamlit
+Modern AI dashboard for interactive farming assistance.
+
+</td>
+
+<td align="center">
+
+### 🌍 HTML5 & CSS3
+Responsive and clean user interface design.
+
+</td>
+
+<td align="center">
+
+### ⚡ Python Backend
+Handles AI logic, predictions, APIs, and data processing.
+
+</td>
+</tr>
+</table>
+
+---
+
+# 🗄️ DATABASE & DATA PROCESSING  
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=mongodb" />
+
+</div>
+
+<table>
+<tr>
+<td align="center">
+
+## 🍃 MongoDB
+
+Smart NoSQL database system for:
+
+✅ User Management  
+✅ Prediction Storage  
+✅ Analytics Tracking  
+✅ Farming History  
+
+</td>
+
+<td align="center">
+
+## 📊 Data Science Stack
+
+<img src="https://skillicons.dev/icons?i=python" />
+
+### Libraries
 - Pandas
 - NumPy
 
+### Used For
+✅ Data Cleaning  
+✅ Data Analysis  
+✅ Feature Engineering  
+✅ ML Processing  
+
+</td>
+</tr>
+</table>
+
 ---
+
+# 🚀 AI MODULE ARCHITECTURE  
+
+<div align="center">
+
+```mermaid
+graph TD;
+
+A[🌱 Farmer Input] --> B[🧠 AI Processing Engine]
+
+B --> C[🌾 Crop Recommendation]
+B --> D[🍃 Disease Detection]
+B --> E[🐛 Pest Prediction]
+B --> F[🌍 Soil Classification]
+B --> G[☁️ Weather Forecasting]
+B --> H[📈 Yield Prediction]
+B --> I[🤖 AI Chatbot]
+
+C --> J[✅ Smart Farming Decisions]
+D --> J
+E --> J
+F --> J
+G --> J
+H --> J
+I --> J
+```
+
+</div>
+
+---
+
+# ⚙️ DEVELOPMENT ENVIRONMENT  
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=git,github,vscode" />
+
+</div>
+
+| Tool | Purpose |
+|---|---|
+| 🔧 VS Code | Development Environment |
+| 🌐 GitHub | Version Control & Collaboration |
+| 🔄 Git | Source Code Management |
+| 📓 Jupyter Notebook | ML Experiments |
+| ☁️ Google Colab | AI Model Training |
+
+---
+
+# 🌟 KRISHISAKHI INNOVATION STACK  
+
+<div align="center">
+
+| 🚀 Technology | 🌾 Purpose |
+|---|---|
+| Artificial Intelligence | Smart Farming Decisions |
+| Machine Learning | Prediction Systems |
+| Deep Learning | Disease Detection |
+| Computer Vision | Image-Based Analysis |
+| NLP | AI Chatbot Assistant |
+| Real-Time APIs | Weather Intelligence |
+| Data Analytics | Yield & Profit Analysis |
+| Multilingual AI | Regional Language Support |
+
+</div>
+
+---
+
+<div align="center">
+
+# 🌾 SMART FARMING • AI AUTOMATION • SUSTAINABLE AGRICULTURE 🚜
+
+### KrishiSakhi is not just an application.  
+### It is a complete AI-powered digital farming ecosystem.
+
+</div>
 
 # 📂 Project Structure  
 
