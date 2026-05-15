@@ -5,14 +5,6 @@ An intelligent precision agriculture system that uses machine learning to provid
 
 <img src="https://capsule-render.vercel.app/api?type=waving&height=300&color=0:00C853,25:32CD32,50:00E5FF,75:7C4DFF,100:00C853&text=🌾%20KRISHISAKHI%20🌾&fontSize=65&fontColor=ffffff&fontAlignY=40&animation=twinkling&desc=AI-Powered%20Smart%20Agriculture%20Ecosystem&descAlignY=62&descSize=22" />
 
-<br>
-
-<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=900&size=38&duration=2500&pause=800&color=39FF14&center=true&vCenter=true&multiline=true&width=1200&height=140&lines=🚜+FUTURE+OF+INTELLIGENT+FARMING;🤖+ARTIFICIAL+INTELLIGENCE+FOR+AGRICULTURE;🌍+SMART+%2B+SUSTAINABLE+%2B+DATA-DRIVEN+FARMING" />
-
-<br><br>
-
-<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3BvNDB0Z2Q1MXR2aXo0M2F4N2R5YjJ5dnl5dXZkNjQ4M3Q4bWl3eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xT9IgzoKnwFNmISR8I/giphy.gif" width="100%" />
-
 <br><br>
 
 <img src="https://img.shields.io/badge/🌱_SMART_FARMING-00C853?style=for-the-badge&logoColor=white" />
