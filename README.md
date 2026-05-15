@@ -374,8 +374,6 @@ If you would like to contribute:
 
 - Rupsha Biswas
 - Sayan Das
-- Rakesh Das
-
 ---
 
 # 📜 License  
