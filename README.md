@@ -28,10 +28,10 @@ An intelligent precision agriculture system that uses machine learning to provid
 <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=28&duration=2500&pause=700&color=39FF14&center=true&vCenter=true&width=1200&lines=AI-Powered+Smart+Agriculture;Future+of+Digital+Farming;Computer+Vision+for+Agriculture;Real-Time+AI+Analytics;Smart+Crop+Recommendation+System;Sustainable+Farming+with+AI" />
 
 </div>
-## ⚡ Transforming Traditional Farming into Intelligent Digital Agriculture ⚡
+ ⚡ Transforming Traditional Farming into Intelligent Digital Agriculture ⚡
 
 </div>
-# 🚀 Overview  
+ 🚀 Overview  
 
 KrishiSakhi is an advanced AI-driven smart agriculture platform designed to transform traditional farming using Artificial Intelligence, Machine Learning, Deep Learning, and Real-Time Analytics.
 
