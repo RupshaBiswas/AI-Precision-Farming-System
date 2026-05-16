@@ -1,0 +1,1852 @@
+import streamlit as st
+import pandas as pd
+import pickle
+import numpy as np
+from deep_translator import GoogleTranslator
+import requests
+from PIL import Image
+import tensorflow as tf
+import pymongo
+from passlib.context import CryptContext
+import datetime
+import base64
+import io
+import threading
+import wave
+# Imports for timezone and MongoDB ObjectId
+from pytz import timezone
+from bson.objectid import ObjectId
+# Imports for the robust Speech-to-Text feature
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, AudioProcessorBase
+import av
+import streamlit.components.v1 as components
+from transformers import AutoImageProcessor, AutoModelForImageClassification
+import torch
+
+
+# =====================================================================================
+# 1. TRANSLATION AND LOCALIZATION SETUP (Updated with Community Forum keys)
+# =====================================================================================
+
+translations = {
+    'en': {
+        'app_title': "KrishiSakhi", 'go_to': "Go to", 'language_selector_label': "Language / भाषा",
+        'page_home': "Home", 'page_crop_recommendation': "Crop Recommendation", 'page_yield_prediction': "Yield Prediction", 'page_crop_calendar': "Crop Calendar", 'page_weather_report': "Weather Report", 'page_leaf_disease_prediction': "Leaf Disease Prediction", 'page_translator': "Translator", 'page_ai_chatbot': "AI Chatbot", 'page_profile': "Profile", 'page_logs': "Logs", 'page_community_forum': "Community Forum",
+        'page_crop_guide': "Crop Guide",
+        'crop_guide_title': "Crop Fertigation and Irrigation Guide",
+        'select_stage_label': "Select a Growth Stage",
+        'guide_table_header': "Guidance Details",
+        'file_not_found_error': "The 'kerala_fertigation_irrigation.csv' file was not found. Please ensure it is in the correct folder.",
+        'home_title': "Welcome to KrishiSakhi! 🌱", 'home_subtitle': "Your AI-powered assistant for modern farming.",
+        'home_intro': "*KrishiSakhi* is designed to empower farmers with data-driven insights.\nNavigate through the sections in the sidebar to access different features:\n- *🌾 Crop Recommendation:* Get suggestions for the best crops to plant based on soil and environmental factors.\n- *📈 Yield Prediction:* Forecast your crop yield based on historical data and farming parameters.\n- *🗓 Crop Calendar:* View the ideal sowing and harvesting times for various crops in Kerala.\n- *🌦 Weather Report:* Get real-time weather updates and forecasts for your location.\n- *🌿 Leaf Disease Prediction:* Upload a leaf image to detect diseases early.\n- *🌐 Translator:* Translate farming terms and sentences between different Indian languages.\n- *🤖 AI Chatbot:* Ask any farming-related questions and get instant answers from our future AI.\n- *👥 Community Forum:* Connect with other farmers, ask questions, and share solutions.",
+        'crop_rec_header': "🌾 Crop Recommendation", 'crop_rec_intro': "Enter the following details to get a crop recommendation.",
+        'nitrogen_label': "Nitrogen (N)", 'phosphorus_label': "Phosphorus (P)", 'potassium_label': "Potassium (K)", 'temperature_label': "Temperature (°C)", 'humidity_label': "Humidity (%)", 'ph_label': "pH Value", 'rainfall_label': "Rainfall (mm)",
+        'recommend_crop_button': "Recommend Crop", 'recommendation_success': "🎉 The recommended crop is *{crop}*.",
+        'crop_info_header': "More Information about {crop}",
+        'description_heading': "📖 Description",
+        'irrigation_heading': "💧 Irrigation Tips",
+        'conditions_heading': "☀️ Ideal Conditions",
+        'pests_heading': "🐛 Common Pests & Diseases",
+        'yield_pred_header': "📈 Crop Yield Prediction", 'yield_pred_intro': "Fill in the details below to predict the crop yield for a specific area in Kerala.",
+        'year_label': "Year", 'crop_label': "Crop", 'season_label': "Season", 'area_label': "Area (in Hectares)",
+        'predict_yield_button': "Predict Yield",
+        'yield_prediction_success': "🌾 The predicted crop yield is approximately *{yield_val:.2f} kg/ha*.",
+        'market_price_header': "💰 Estimated Market Value",
+        'fetching_prices_spinner': "Fetching latest market prices...",
+        'market_price_label': "Avg. Market Price (per Quintal)",
+        'total_value_label': "Total Estimated Value",
+        'price_not_available': "Price data for {crop} is currently unavailable.",
+        'price_api_error': "Could not fetch market price data at this time.",
+        'crop_calendar_header': "🗓 Kerala Crop Sowing and Harvest Calendar", 'select_crop_label': "Select a Crop",
+        'schedule_for_crop': "📅 Schedule for {crop}", 'sowing_start_label': "Sowing Start", 'sowing_end_label': "Sowing End", 'harvest_start_label': "Harvest Start", 'harvest_end_label': "Harvest End", 'fertiliser_label': "Fertiliser (N:P:K kg/ha)", 'duration_label': "Duration",
+        'weather_report_header': "🌦 Weather Report", 'enter_city_label': "Enter the name of your city", 'get_weather_button': "Get Weather",
+        'current_weather_in': "Current Weather in {location}", 'temperature_metric': "Temperature", 'feels_like_metric': "Feels Like", 'humidity_metric': "Humidity",
+        'description_label': "Description:", 'wind_label': "Wind:", 'precipitation_label': "Precipitation:",
+        'forecast_header': "🗓 3-Day Forecast", 'avg_temp_label': "Avg Temp:", 'max_temp_label': "Max Temp:", 'min_temp_label': "Min Temp:", 'sunrise_label': "Sunrise:", 'sunset_label': "Sunset:", 'outlook_label': "Outlook:",
+        'error_parsing_weather': "Could not parse weather data. Please check the city name and try again. Error: {e}", 'enter_city_warning': "⚠ Please enter a city name.",
+        'weather_fetch_error': "Could not retrieve weather data. Please check your network connection or the city name and try again.",
+        'weather_api_key_error': "API Key Error: {message}. Please check your OpenWeatherMap API key in secrets.toml. Note that new keys can take a few hours to activate.",
+        'weather_city_not_found_error': "City Not Found Error: {message}. Please check the spelling of the city name.",
+        'weather_api_generic_error': "API Error ({cod}): {message}",
+        'translator_header': "🌐 Farmer Language Translator", 'translator_intro': "✍ Enter text to translate", 'translate_button': "🔄 Translate",
+        'translation_failed_error': "❌ Translation failed: {e}", 'enter_text_warning': "⚠ Please enter some text.",
+        'ai_chatbot_header': "🤖 AI Chatbot",
+        'ai_chatbot_intro': "This feature is coming soon! Stay tuned for a powerful AI chatbot to help with your farming questions.",
+        'languages_supported_label': "Languages Supported", 'farmers_helped_label': "Farmers Helped", 'crops_covered_label': "Crops Covered", 'recommendations_given_label': "AI Recommendations",
+        'leaf_disease_header': "🌿 Leaf Disease Prediction", 'leaf_disease_intro': "Upload an image of a plant leaf to check for diseases.", 'model_not_found_warning': "⚠ Disease prediction model not found. Please contact the administrator.",
+        'uploader_label': "Choose a leaf image...", 'uploaded_image_caption': "Uploaded Image.", 'predict_disease_button': "🔍 Predict Disease",
+        'predicting_spinner': "Analyzing the leaf...", 'prediction_result': "✅ Prediction: *{disease}*",
+        'remedy_info_header': "🩺 Treatment and Management for {disease}",
+        'disease_description_heading': "ℹ️ About the Disease",
+        'organic_remedies_heading': "🌿 Organic Remedies",
+        'chemical_remedies_heading': "🧪 Chemical Remedies",
+        'healthy_plant_message': "Great news! Your plant appears to be healthy. Continue with good agricultural practices.",
+        'page_pest_prediction': "Pest Prediction",
+        'pest_prediction_header': "Pest Identification from Image",
+        'upload_image_pest': "Upload an image of the pest or affected leaf",
+        'prediction_pest': "Predicted Pest / Insect",
+        'model_loading_error': "Could not load the pest prediction model. Please check the internet connection.",
+        'feedback_header': "Feedback", 'rating_label': "Rate your experience:", 'submit_button': "Submit", 'feedback_success': "Thanks for your feedback!",
+        'contact_header': "Contact Us",
+        'login_page_title': "Welcome to KrishiSakhi 🌱",
+        'login_tab': "Login", 'signup_tab': "Sign Up",
+        'username_label': "Username", 'password_label': "Password",
+        'login_button': "Login", 'signup_button': "Sign Up",
+        'logout_button': "Logout",
+        'login_error': "Incorrect username or password.",
+        'signup_success': "Registration successful! Please login.",
+        'signup_error_exists': "Username already exists. Please choose another one.",
+        'signup_error_general': "An error occurred during registration.",
+        'welcome_back': "Welcome back, {username}!",
+        'profile_header': "👤 My Profile",
+        'profile_subheader': "Manage your account details and settings.",
+        'full_name_label': "Full Name",
+        'contact_number_label': "Contact Number",
+        'new_username_label': "New Username",
+        'new_password_label': "New Password",
+        'confirm_password_label': "Confirm New Password",
+        'profile_pic_label': "Profile Picture",
+        'update_profile_button': "Update Profile",
+        'profile_update_success': "✅ Profile updated successfully!",
+        'profile_update_error': "❌ Could not update profile. Username may already exist.",
+        'password_mismatch_error': "Passwords do not match.",
+        'danger_zone_header': "🚨 Danger Zone",
+        'delete_account_button': "Delete My Account",
+        'delete_account_warning': "This action is irreversible. All your data will be permanently deleted.",
+        'delete_confirmation_label': "To confirm, please type `DELETE` in the box below.",
+        'delete_account_confirm_button': "Yes, I want to delete my account",
+        'account_deleted_success': "Your account has been successfully deleted.",
+        'incorrect_delete_confirmation': "Incorrect confirmation text.",
+        'logs_header': "My Farming Logs",
+        'logs_intro': "Record your daily activities, observations, and notes here.",
+        'new_log_label': "New Log Entry",
+        'save_log_button': "Save Log",
+        'log_saved_success': "Log entry saved successfully!",
+        'past_logs_header': "📖 Past Entries",
+        'no_logs_message': "You have no log entries yet.",
+        'delete_log_button': "Delete",
+        'log_deleted_success': "Log deleted!",
+        'record_log_prompt': "Attach a voice note:",
+        'voice_note_recorded': "🎤 Voice note recorded and ready to be saved with your log.",
+        'attached_voice_note': "Attached Voice Note:",
+        'upload_media_label': "Attach photos or videos:",
+        'attached_images': "Attached Images:",
+        'attached_videos': "Attached Videos:",
+        'forum_header': "👥 Community Forum",
+        'forum_intro': "Connect with other farmers. Ask questions, share solutions, and grow together.",
+        'create_post_header': "Create a New Post",
+        'post_title_label': "Title",
+        'post_title_placeholder': "Enter a clear and concise title",
+        'post_content_label': "Your Question or Tip",
+        'post_content_placeholder': "Describe your issue or share your knowledge in detail...",
+        'upload_image_label': "Upload an Image (Optional)",
+        'submit_post_button': "Submit Post",
+        'post_success_message': "✅ Your post has been published!",
+        'all_posts_header': "All Posts",
+        'posted_by': "Posted by {username} on {date}",
+        'like_button': "👍 Like ({count})",
+        'reply_button': "💬 Reply",
+        'replies_header': "Replies",
+        'add_reply_placeholder': "Write a reply...",
+        'submit_reply_button': "Post Reply",
+        'no_posts_message': "No posts yet. Be the first to start a conversation!",
+        'view_replies': "View {count} replies",
+        'hide_replies': "Hide replies",
+    },
+    'hi': {
+        'app_title': "कृषि-सखी", 'go_to': "पेज पर जाएं", 'language_selector_label': "भाषा",
+        'page_home': "होम", 'page_crop_recommendation': "फसल सिफारिश", 'page_yield_prediction': "उपज भविष्यवाणी", 'page_crop_calendar': "फसल कैलेंडर", 'page_weather_report': "मौसम रिपोर्ट", 'page_leaf_disease_prediction': "पत्ती रोग की भविष्यवाणी", 'page_translator': "अनुवादक", 'page_ai_chatbot': "एआई चैटबॉट", 'page_profile': "प्रोफ़ाइल", 'page_logs': "लॉग", 'page_community_forum': "सामुदायिक मंच",
+        'page_crop_guide': "फसल गाइड",
+        'crop_guide_title': "फसल फर्टिगेशन और सिंचाई गाइड",
+        'select_stage_label': "एक विकास चरण चुनें",
+        'guide_table_header': "मार्गदर्शन विवरण",
+        'file_not_found_error': "'kerala_fertigation_irrigation.csv' फ़ाइल नहीं मिली। कृपया सुनिश्चित करें कि यह सही फ़ोल्डर में है।",
+        'home_title': "कृषि-सखी में आपका स्वागत है! 🌱", 'home_subtitle': "आधुनिक खेती के लिए आपका एआई-संचालित सहायक।",
+        'home_intro': "*कृषि-सखी* को किसानों को डेटा-संचालित अंतर्दृष्टि के साथ सशक्त बनाने के लिए डिज़ाइन किया गया है।\nविभिन्न सुविधाओं तक पहुंचने के लिए साइडबार में अनुभागों के माध्यम से नेविगेट करें:\n- *🌾 फसल सिफारिश:* मिट्टी और पर्यावरणीय कारकों के आधार पर लगाने के लिए सर्वोत्तम फसलों के लिए सुझाव प्राप्त करें।\n- *📈 उपज भविष्यवाणी:* ऐतिहासिक डेटा और खेती के मापदंडों के आधार पर अपनी फसल की उपज का पूर्वानुमान करें।\n- *🗓 फसल कैलेंडर:* केरल में विभिन्न फसलों के लिए आदर्श बुवाई और कटाई का समय देखें।\n- *🌦 मौसम रिपोर्ट:* अपने स्थान के लिए वास्तविक समय के मौसम अपडेट और पूर्वानुमान प्राप्त करें।\n- *🌿 पत्ती रोग की भविष्यवाणी:* बीमारियों का शीघ्र पता लगाने के लिए पत्ती की एक छवि अपलोड करें।\n- *🌐 अनुवादक:* खेती की शर्तों और वाक्यों का विभिन्न भारतीय भाषाओं के बीच अनुवाद करें।\n- *🤖 एआई चैटबॉट:* अपनी खेती के सवालों में मदद के लिए एक शक्तिशाली एआई चैटबॉट के लिए बने रहें।\n- *👥 सामुदायिक मंच:* अन्य किसानों से जुड़ें, प्रश्न पूछें और समाधान साझा करें।",
+        'crop_rec_header': "🌾 फसल सिफारिश", 'crop_rec_intro': "फसल की सिफारिश प्राप्त करने के लिए निम्नलिखित विवरण दर्ज करें।",
+        'nitrogen_label': "नाइट्रोजन (N)", 'phosphorus_label': "फास्फोरस (P)", 'potassium_label': "पोटेशियम (K)", 'temperature_label': "तापमान (°C)", 'humidity_label': "नमी (%)", 'ph_label': "पीएच मान", 'rainfall_label': "वर्षा (मिमी)",
+        'recommend_crop_button': "फसल की सिफारिश करें", 'recommendation_success': "🎉 अनुशंसित फसल है *{crop}*।",
+        'crop_info_header': "{crop} के बारे में अधिक जानकारी", 'description_heading': "📖 विवरण", 'irrigation_heading': "💧 सिंचाई युक्तियाँ", 'conditions_heading': "☀️ आदर्श स्थितियाँ", 'pests_heading': "🐛 सामान्य कीट और रोग",
+        'yield_pred_header': "📈 उपज भविष्यवाणी", 'yield_pred_intro': "केरल के एक विशिष्ट क्षेत्र के लिए फसल की उपज की भविष्यवाणी करने के लिए नीचे दिए गए विवरण भरें।",
+        'year_label': "वर्ष", 'crop_label': "फसल", 'season_label': "मौसम", 'area_label': "क्षेत्र (हेक्टेयर में)",
+        'predict_yield_button': "उपज की भविष्यवाणी करें", 'yield_prediction_success': "🌾 अनुमानित फसल उपज लगभग *{yield_val:.2f} किग्रा/हेक्टेयर* है।",
+        'market_price_header': "💰 अनुमानित बाजार मूल्य", 'fetching_prices_spinner': "नवीनतम बाजार मूल्य प्राप्त हो रहे हैं...", 'market_price_label': "औसत बाजार मूल्य (प्रति क्विंटल)", 'total_value_label': "कुल अनुमानित मूल्य", 'price_not_available': "{crop} के लिए मूल्य डेटा वर्तमान में अनुपलब्ध है।", 'price_api_error': "इस समय बाजार मूल्य डेटा प्राप्त नहीं किया जा सका।",
+        'crop_calendar_header': "🗓 केरल फसल बुवाई और कटाई कैलेंडर", 'select_crop_label': "एक फसल चुनें",
+        'schedule_for_crop': "📅 {crop} के लिए अनुसूची", 'sowing_start_label': "बुवाई शुरू", 'sowing_end_label': "बुवाई अंत", 'harvest_start_label': "कटाई शुरू", 'harvest_end_label': "कटाई अंत", 'fertiliser_label': "उर्वरक (N:P:K किग्रा/हेक्टेयर)", 'duration_label': "अवधि",
+        'weather_report_header': "🌦 मौसम रिपोर्ट", 'enter_city_label': "अपने शहर का नाम दर्ज करें", 'get_weather_button': "मौसम प्राप्त करें",
+        'current_weather_in': "{location} में वर्तमान मौसम", 'temperature_metric': "तापमान", 'feels_like_metric': "महसूस होता है", 'humidity_metric': "नमी",
+        'description_label': "विवरण:", 'wind_label': "हवा:", 'precipitation_label': "वर्षा:",
+        'forecast_header': "🗓 3-दिवसीय पूर्वानुमान", 'avg_temp_label': "औसत तापमान:", 'max_temp_label': "अधिकतम तापमान:", 'min_temp_label': "न्यूनतम तापमान:", 'sunrise_label': "सूर्योदय:", 'sunset_label': "सूर्यास्त:", 'outlook_label': "दृष्टिकोण:",
+        'error_parsing_weather': "मौसम डेटा पार्स नहीं किया जा सका। कृपया शहर का नाम जांचें और पुनः प्रयास करें। त्रुटि: {e}", 'enter_city_warning': "⚠ कृपया एक शहर का नाम दर्ज करें।",
+        'translator_header': "🌐 किसान भाषा अनुवादक", 'translator_intro': "✍ अनुवाद करने के लिए टेक्स्ट दर्ज करें", 'translate_button': "🔄 अनुवाद करें",
+        'translation_failed_error': "❌ अनुवाद विफल: {e}", 'enter_text_warning': "⚠ कृपया कुछ टेक्स्ट दर्ज करें।",
+        'ai_chatbot_header': "🤖 एआई चैटबॉट",
+        'ai_chatbot_intro': "यह सुविधा जल्द ही आ रही है! अपनी खेती के सवालों में मदद के लिए एक शक्तिशाली एआई चैटबॉट के लिए बने रहें।",
+        'languages_supported_label': "समर्थित भाषाएँ", 'farmers_helped_label': "किसानों की मदद की", 'crops_covered_label': "शामिल फसलें", 'recommendations_given_label': "एआई सिफारिशें",
+        'leaf_disease_header': "🌿 पत्ती रोग की भविष्यवाणी", 'leaf_disease_intro': "बीमारियों की जांच के लिए पौधे की पत्ती का चित्र अपलोड करें।", 'model_not_found_warning': "⚠ रोग भविष्यवाणी मॉडल नहीं मिला। कृपया व्यवस्थापक से संपर्क करें।",
+        'uploader_label': "एक पत्ती की छवि चुनें...", 'uploaded_image_caption': "अपलोड की गई छवि।", 'predict_disease_button': "🔍 रोग की भविष्यवाणी करें",
+        'predicting_spinner': "पत्ती का विश्लेषण किया जा रहा है...", 'prediction_result': "✅ भविष्यवाणी: *{disease}*",
+        'remedy_info_header': "{disease} के लिए उपचार और प्रबंधन", 'disease_description_heading': "ℹ️ रोग के बारे में", 'organic_remedies_heading': "🌿 जैविक उपचार", 'chemical_remedies_heading': "🧪 रासायनिक उपचार", 'healthy_plant_message': "खुशखबरी! आपका पौधा स्वस्थ दिखाई देता है। अच्छी कृषि पद्धतियों को जारी रखें।",
+        'page_pest_prediction': "कीट भविष्यवाणी",
+        'pest_prediction_header': "छवि से कीट की पहचान",
+        'upload_image_pest': "कीट या प्रभावित पत्ती की एक छवि अपलोड करें",
+        'prediction_pest': "अनुमानित कीट",
+        'model_loading_error': "कीट भविष्यवाणी मॉडल लोड नहीं हो सका। कृपया इंटरनेट कनेक्शन की जांच करें।",
+        'feedback_header': "प्रतिक्रिया", 'rating_label': "अपने अनुभव का मूल्यांकन करें:", 'submit_button': "प्रस्तुत करें", 'feedback_success': "आपकी प्रतिक्रिया के लिए धन्यवाद!",
+        'contact_header': "संपर्क करें",
+        'weather_api_key_error': "API कुंजी त्रुटि: {message}। कृपया अपनी OpenWeatherMap API कुंजी secrets.toml में जांचें। ध्यान दें कि नई कुंजियों को सक्रिय होने में कुछ घंटे लग सकते हैं।",
+        'weather_city_not_found_error': "शहर नहीं मिला त्रुटि: {message}। कृपया शहर के नाम की वर्तनी जांचें।",
+        'weather_api_generic_error': "API त्रुटि ({cod}): {message}",
+        'login_page_title': "कृषि-सखी में आपका स्वागत है 🌱",
+        'login_tab': "लॉग इन करें", 'signup_tab': "साइन अप करें",
+        'username_label': "उपयोगकर्ता नाम", 'password_label': "पासवर्ड",
+        'login_button': "लॉग इन करें", 'signup_button': "साइन अप करें",
+        'logout_button': "लॉग आउट",
+        'login_error': "गलत उपयोगकर्ता नाम या पासवर्ड।",
+        'signup_success': "पंजीकरण सफल! कृपया लॉग इन करें।",
+        'signup_error_exists': "उपयोगकर्ता नाम पहले से मौजूद है। कृपया दूसरा चुनें।",
+        'signup_error_general': "पंजीकरण के दौरान एक त्रुटि हुई।",
+        'welcome_back': "वापसी पर स्वागत है, {username}!",
+        'profile_header': "👤 मेरी प्रोफ़ाइल",
+        'profile_subheader': "अपने खाते का विवरण और सेटिंग्स प्रबंधित करें।",
+        'full_name_label': "पूरा नाम", 'contact_number_label': "संपर्क नंबर",
+        'new_username_label': "नया उपयोगकर्ता नाम",
+        'new_password_label': "नया पासवर्ड",
+        'confirm_password_label': "नए पासवर्ड की पुष्टि करें",
+        'profile_pic_label': "प्रोफ़ाइल तस्वीर",
+        'update_profile_button': "प्रोफ़ाइल अपडेट करें",
+        'profile_update_success': "✅ प्रोफ़ाइल सफलतापूर्वक अपडेट की गई!",
+        'profile_update_error': "❌ प्रोफ़ाइल अपडेट नहीं हो सकी। उपयोगकर्ता नाम पहले से मौजूद हो सकता है।",
+        'password_mismatch_error': "पासवर्ड मेल नहीं खाते।",
+        'danger_zone_header': "🚨 खतरा क्षेत्र",
+        'delete_account_button': "मेरा खाता हटाएं",
+        'delete_account_warning': "यह कार्रवाई अपरिवर्तनीय है। आपका सारा डेटा स्थायी रूप से हटा दिया जाएगा।",
+        'delete_confirmation_label': "पुष्टि करने के लिए, कृपया नीचे दिए गए बॉक्स में `DELETE` टाइप करें।",
+        'delete_account_confirm_button': "हाँ, मैं अपना खाता हटाना चाहता हूँ",
+        'account_deleted_success': "आपका खाता सफलतापूर्वक हटा दिया गया है।",
+        'incorrect_delete_confirmation': "गलत पुष्टि पाठ।",
+        'logs_header': "मेरे खेती लॉग", 'logs_intro': "अपनी दैनिक गतिविधियों, अवलोकनों और नोट्स को यहाँ रिकॉर्ड करें।", 'new_log_label': "नई लॉग प्रविष्टि", 'save_log_button': "लॉग सहेजें", 'log_saved_success': "लॉग प्रविष्टि सफलतापूर्वक सहेजी गई!", 'past_logs_header': "📖 पिछली प्रविष्टियाँ", 'no_logs_message': "आपके पास अभी तक कोई लॉग प्रविष्टि नहीं है।", 'delete_log_button': "हटाएं", 'log_deleted_success': "लॉग हटाया गया!", 'record_log_prompt': "एक वॉयस नोट संलग्न करें:", 'voice_note_recorded': "🎤 वॉयस नोट रिकॉर्ड किया गया और आपके लॉग के साथ सहेजने के लिए तैयार है।", 'attached_voice_note': "संलग्न वॉयस नोट:",
+        'upload_media_label': "तस्वीरें या वीडियो संलग्न करें:",
+        'attached_images': "संलग्न तस्वीरें:",
+        'attached_videos': "संलग्न वीडियो:",
+        'forum_header': "👥 सामुदायिक मंच",
+        'forum_intro': "अन्य किसानों से जुड़ें। प्रश्न पूछें, समाधान साझा करें और मिलकर आगे बढ़ें।",
+        'create_post_header': "एक नई पोस्ट बनाएं",
+        'post_title_label': "शीर्षक",
+        'post_title_placeholder': "एक स्पष्ट और संक्षिप्त शीर्षक दर्ज करें",
+        'post_content_label': "आपका प्रश्न या सुझाव",
+        'post_content_placeholder': "अपनी समस्या का वर्णन करें या अपना ज्ञान विस्तार से साझा करें...",
+        'upload_image_label': "एक छवि अपलोड करें (वैकल्पिक)",
+        'submit_post_button': "पोस्ट सबमिट करें",
+        'post_success_message': "✅ आपकी पोस्ट प्रकाशित हो गई है!",
+        'all_posts_header': "सभी पोस्ट",
+        'posted_by': "{username} द्वारा {date} को पोस्ट किया गया",
+        'like_button': "👍 पसंद करें ({count})",
+        'reply_button': "💬 उत्तर दें",
+        'replies_header': "उत्तर",
+        'add_reply_placeholder': "एक उत्तर लिखें...",
+        'submit_reply_button': "उत्तर पोस्ट करें",
+        'no_posts_message': "अभी तक कोई पोस्ट नहीं है। बातचीत शुरू करने वाले पहले व्यक्ति बनें!",
+        'view_replies': "{count} उत्तर देखें",
+        'hide_replies': "उत्तर छिपाएं",
+    },
+    'ml': {
+        'app_title': "കൃഷിസഖി", 'go_to': "പോകുക", 'language_selector_label': "ഭാഷ",
+        'page_home': "ഹോം", 'page_crop_recommendation': "വിള ശുപാർശ", 'page_yield_prediction': "വിളവ് പ്രവചനം", 'page_crop_calendar': "വിള കലണ്ടർ", 'page_weather_report': "കാലാവസ്ഥാ റിപ്പോർട്ട്", 'page_leaf_disease_prediction': "ഇലരോഗ നിർണ്ണയം", 'page_translator': "പരിഭാഷകൻ", 'page_ai_chatbot': "AI ചാറ്റ്ബോട്ട്", 'page_profile': "പ്രൊഫൈൽ", 'page_logs': "ലോഗുകൾ", 'page_community_forum': "കമ്മ്യൂണിറ്റി ഫോറം",
+        'page_crop_guide': "വിള ഗൈഡ്",
+        'crop_guide_title': "വിള വളപ്രയോഗ-ജലസേചന ഗൈഡ്",
+        'select_stage_label': "വളർച്ചാ ഘട്ടം തിരഞ്ഞെടുക്കുക",
+        'guide_table_header': "മാർഗ്ഗനിർദ്ദേശങ്ങൾ",
+        'file_not_found_error': "'kerala_fertigation_irrigation.csv' ഫയൽ കണ്ടെത്തിയില്ല. ദയവായി അത് ശരിയായ ഫോൾഡറിൽ ആണെന്ന് ഉറപ്പാക്കുക.",
+        'home_title': "കൃഷിസഖിയിലേക്ക് സ്വാഗതം! 🌱", 'home_subtitle': "ആധുനിക കൃഷിക്കായുള്ള നിങ്ങളുടെ AI-പവർ അസിസ്റ്റന്റ്.",
+        'home_intro': "*കൃഷിസഖി* കർഷകർക്ക് ഡാറ്റാധിഷ്ഠിത ഉൾക്കാഴ്ചകൾ നൽകാൻ രൂപകൽപ്പന ചെയ്തിട്ടുള്ളതാണ്.\nവിവിധ ഫീച്ചറുകൾ ആക്‌സസ് ചെയ്യുന്നതിന് സൈഡ്‌ബാറിലെ വിഭാഗങ്ങളിലൂടെ നാവിഗേറ്റ് ചെയ്യുക:\n- *🌾 വിള ശുപാർശ:* മണ്ണും പാരിസ്ഥിതിക ഘടകങ്ങളും അടിസ്ഥാനമാക്കി നടാൻ ഏറ്റവും മികച്ച വിളകൾക്കുള്ള നിർദ്ദേശങ്ങൾ നേടുക.\n- *📈 വിളവ് പ്രവചനം:* ചരിത്രപരമായ ഡാറ്റയും കൃഷി പാരാമീറ്ററുകളും അടിസ്ഥാനമാക്കി നിങ്ങളുടെ വിളവ് പ്രവചിക്കുക.\n- *🗓 വിള കലണ്ടർ:* കേരളത്തിലെ വിവിധ വിളകളുടെ അനുയോജ്യമായ വിതയ്ക്കൽ, വിളവെടുപ്പ് സമയം കാണുക.\n- *🌦 കാലാവസ്ഥാ റിപ്പോർട്ട്:* നിങ്ങളുടെ സ്ഥലത്തിനായുള്ള തത്സമയ കാലാവസ്ഥാ അപ്‌ഡേറ്റുകളും പ്രവചനങ്ങളും നേടുക.\n- *🌿 ഇലരോഗ നിർണ്ണയം:* രോഗങ്ങൾ നേരത്തെ കണ്ടെത്താൻ ഇലയുടെ ഒരു ചിത്രം അപ്‌ലോഡ് ചെയ്യുക.\n- *🌐 പരിഭാഷകൻ:* കൃഷി സംബന്ധമായ പദങ്ങളും വാക്യങ്ങളും വിവിധ ഇന്ത്യൻ ഭാഷകളിലേക്ക് വിവർത്തനം ചെയ്യുക.\n- *🤖 AI ചാറ്റ്ബോട്ട്:* നിങ്ങളുടെ കൃഷി ചോദ്യങ്ങൾക്ക് സഹായിക്കാൻ ഒരു ശക്തമായ AI ചാറ്റ്ബോട്ടിനായി കാത്തിരിക്കുക.\n- *👥 കമ്മ്യൂണിറ്റി ഫോറം:* മറ്റ് കർഷകരുമായി ബന്ധപ്പെടുക, ചോദ്യങ്ങൾ ചോദിക്കുക, പരിഹാരങ്ങൾ പങ്കിടുക.",
+        'crop_rec_header': "🌾 വിള ശുപാർശ", 'crop_rec_intro': "വിള ശുപാർശ ലഭിക്കുന്നതിന് താഴെ പറയുന്ന വിവരങ്ങൾ നൽകുക.",
+        'nitrogen_label': "നൈട്രജൻ (N)", 'phosphorus_label': "ഫോസ്ഫറസ് (P)", 'potassium_label': "പൊട്ടാസ്യം (K)", 'temperature_label': "താപനില (°C)", 'humidity_label': "ഈർപ്പം (%)", 'ph_label': "pH മൂല്യം", 'rainfall_label': "മഴ (mm)",
+        'recommend_crop_button': "വിള ശുപാർശ ചെയ്യുക", 'recommendation_success': "🎉 ശുപാർശ ചെയ്യുന്ന വിള *{crop}* ആണ്.",
+        'crop_info_header': "{crop}-നെക്കുറിച്ച് കൂടുതൽ വിവരങ്ങൾ", 'description_heading': "📖 വിവരണം", 'irrigation_heading': "💧 ജലസേചന നുറുങ്ങുകൾ", 'conditions_heading': "☀️ അനുയോജ്യമായ സാഹചര്യങ്ങൾ", 'pests_heading': "🐛 സാധാരണ കീടങ്ങളും രോഗങ്ങളും",
+        'yield_pred_header': "📈 വിളവ് പ്രവചനം", 'yield_pred_intro': "കേരളത്തിലെ ഒരു പ്രത്യേക പ്രദേശത്തെ വിളവ് പ്രവചിക്കാൻ താഴെയുള്ള വിശദാംശങ്ങൾ പൂരിപ്പിക്കുക.",
+        'year_label': "വർഷം", 'crop_label': "വിള", 'season_label': "സീസൺ", 'area_label': "വിസ്തീർണ്ണം (ഹെക്ടറിൽ)",
+        'predict_yield_button': "വിളവ് പ്രവചിക്കുക", 'yield_prediction_success': "🌾 പ്രവചിക്കപ്പെട്ട വിളവ് ഏകദേശം *{yield_val:.2f} കി.ഗ്രാം/ഹെക്ടർ* ആണ്.",
+        'market_price_header': "💰 കണക്കാക്കിയ വിപണി മൂല്യം", 'fetching_prices_spinner': "ഏറ്റവും പുതിയ മാർക്കറ്റ് വിലകൾ ലഭ്യമാക്കുന്നു...", 'market_price_label': "ശരാശരി വിപണി വില (ക്വിൻ്റലിന്)", 'total_value_label': "കണക്കാക്കിയ മൊത്തം മൂല്യം", 'price_not_available': "{crop}-നുള്ള വിലവിവരം ഇപ്പോൾ ലഭ്യമല്ല.", 'price_api_error': "മാർക്കറ്റ് വില വിവരങ്ങൾ ഇപ്പോൾ ലഭ്യമാക്കാൻ സാധിക്കുന്നില്ല.",
+        'crop_calendar_header': "🗓 കേരള വിള വിതയ്ക്കൽ, വിളവെടുപ്പ് കലണ്ടർ", 'select_crop_label': "ഒരു വിള തിരഞ്ഞെടുക്കുക",
+        'schedule_for_crop': "📅 {crop}-നുള്ള ഷെഡ്യൂൾ", 'sowing_start_label': "വിതയ്ക്കൽ ആരംഭം", 'sowing_end_label': "വിതയ്ക്കൽ അവസാനം", 'harvest_start_label': "വിളവെടുപ്പ് ആരംഭം", 'harvest_end_label': "വിളവെടുപ്പ് അവസാനം", 'fertiliser_label': "വളം (N:P:K കി.ഗ്രാം/ഹെക്ടർ)", 'duration_label': "കാലാവധി",
+        'weather_report_header': "🌦 കാലാവസ്ഥാ റിപ്പോർട്ട്", 'enter_city_label': "നിങ്ങളുടെ നഗരത്തിന്റെ പേര് നൽകുക", 'get_weather_button': "കാലാവസ്ഥ നേടുക",
+        'current_weather_in': "{location}-ലെ നിലവിലെ കാലാവസ്ഥ", 'temperature_metric': "താപനില", 'feels_like_metric': "അനുഭവപ്പെടുന്നത്", 'humidity_metric': "ഈർപ്പം",
+        'description_label': "വിവരണം:", 'wind_label': "കാറ്റ്:", 'precipitation_label': "മഴ:",
+        'forecast_header': "🗓 3-ദിവസത്തെ പ്രവചനം", 'avg_temp_label': "ശരാശരി താപനില:", 'max_temp_label': "പരമാവധി താപനില:", 'min_temp_label': "കുറഞ്ഞ താപനില:", 'sunrise_label': "സൂര്യോദയം:", 'sunset_label': "സൂര്യാസ്തമയം:", 'outlook_label': "കാഴ്ചപ്പാട്:",
+        'error_parsing_weather': "കാലാവസ്ഥാ ഡാറ്റ പാഴ്‌സ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി നഗരത്തിന്റെ പേര് പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക. പിശക്: {e}", 'enter_city_warning': "⚠ ദയവായി ഒരു നഗരത്തിന്റെ പേര് നൽകുക.",
+        'translator_header': "🌐 കർഷക ഭാഷാ പരിഭാഷകൻ", 'translator_intro': "✍ വിവർത്തനം ചെയ്യാൻ ടെക്സ്റ്റ് നൽകുക", 'translate_button': "🔄 വിവർത്തനം ചെയ്യുക",
+        'translation_failed_error': "❌ വിവർത്തനം പരാജയപ്പെട്ടു: {e}", 'enter_text_warning': "⚠ ദയവായി കുറച്ച് ടെക്സ്റ്റ് നൽകുക.",
+        'ai_chatbot_header': "🤖 AI ചാറ്റ്ബോട്ട്",
+        'ai_chatbot_intro': "ഈ ഫീച്ചർ ഉടൻ വരുന്നു! നിങ്ങളുടെ കൃഷി ചോദ്യങ്ങൾക്ക് സഹായിക്കാൻ ഒരു ശക്തമായ AI ചാറ്റ്ബോട്ടിനായി കാത്തിരിക്കുക.",
+        'languages_supported_label': "പിന്തുണയ്ക്കുന്ന ഭാഷകൾ", 'farmers_helped_label': "സഹായിച്ച കർഷകർ", 'crops_covered_label': "ഉൾക്കൊള്ളുന്ന വിളകൾ", 'recommendations_given_label': "AI ശുപാർശകൾ",
+        'leaf_disease_header': "🌿 ഇലരോഗ നിർണ്ണയം", 'leaf_disease_intro': "രോഗങ്ങൾ പരിശോധിക്കാൻ സസ്യത്തിന്റെ ഇലയുടെ ഒരു ചിത്രം അപ്‌ലോഡ് ചെയ്യുക.", 'model_not_found_warning': "⚠ രോഗ നിർണ്ണയ മോഡൽ കണ്ടെത്തിയില്ല. ദയവായി അഡ്മിനിസ്ട്രേറ്ററുമായി ബന്ധപ്പെടുക.",
+        'uploader_label': "ഇലയുടെ ചിത്രം തിരഞ്ഞെടുക്കുക...", 'uploaded_image_caption': "അപ്‌ലോഡ് ചെയ്ത ചിത്രം.", 'predict_disease_button': "🔍 രോഗം നിർണ്ണയിക്കുക",
+        'predicting_spinner': "ഇല വിശകലനം ചെയ്യുന്നു...", 'prediction_result': "✅ നിർണ്ണയം: *{disease}*",
+        'remedy_info_header': "{disease}-നുള്ള ചികിത്സയും പ്രതിരോധവും", 'disease_description_heading': "ℹ️ രോഗത്തെക്കുറിച്ച്", 'organic_remedies_heading': "🌿 ജൈവ പ്രതിവിധികൾ", 'chemical_remedies_heading': "🧪 രാസപരമായ പ്രതിവിധികൾ", 'healthy_plant_message': "ഒരു സന്തോഷ വാർത്ത! നിങ്ങളുടെ ചെടി ആരോഗ്യത്തോടെ കാണപ്പെടുന്നു. നല്ല കൃഷിരീതികൾ തുടരുക.",
+        'page_pest_prediction': "കീട പ്രവചനം",
+        'pest_prediction_header': "ചിത്രത്തിൽ നിന്ന് കീടങ്ങളെ തിരിച്ചറിയൽ",
+        'upload_image_pest': "കീടത്തിന്റെയോ രോഗം ബാധിച്ച ഇലയുടെയോ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക",
+        'prediction_pest': "പ്രവചിച്ച കീടം",
+        'model_loading_error': "കീട പ്രവചന മോഡൽ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക.",
+        # ... (add other translations for Malayalam here)
+        'feedback_header': "അഭിപ്രായം", 'rating_label': "നിങ്ങളുടെ അനുഭവം റേറ്റുചെയ്യുക:", 'submit_button': "സമർപ്പിക്കുക", 'feedback_success': "നിങ്ങളുടെ അഭിപ്രായത്തിന് നന്ദി!",
+        'contact_header': "ബന്ധപ്പെടുക",
+        'weather_api_key_error': "API കീ പിശക്: {message}. secrets.toml-ൽ നിങ്ങളുടെ OpenWeatherMap API കീ പരിശോധിക്കുക. പുതിയ കീകൾ സജീവമാകാൻ കുറച്ച് മണിക്കൂറുകൾ എടുത്തേക്കാം.",
+        'weather_city_not_found_error': "നഗരം കണ്ടെത്താനായില്ല പിശക്: {message}. ദയവായി നഗരത്തിന്റെ പേരിന്റെ സ്പെല്ലിംഗ് പരിശോധിക്കുക.",
+        'weather_api_generic_error': "API പിശക് ({cod}): {message}",
+        'login_page_title': "കൃഷിസഖിയിലേക്ക് സ്വാഗതം 🌱",
+        'login_tab': "ലോഗിൻ ചെയ്യുക", 'signup_tab': "സൈൻ അപ്പ് ചെയ്യുക",
+        'username_label': "ഉപയോക്തൃനാമം", 'password_label': "പാസ്വേഡ്",
+        'login_button': "ലോഗിൻ ചെയ്യുക", 'signup_button': "സൈൻ അപ്പ് ചെയ്യുക",
+        'logout_button': "ലോഗ് ഔട്ട്",
+        'login_error': "തെറ്റായ ഉപയോക്തൃനാമം അല്ലെങ്കിൽ പാസ്‌വേഡ്.",
+        'signup_success': "രജിസ്ട്രേഷൻ വിജയകരം! ദയവായി ലോഗിൻ ചെയ്യുക.",
+        'signup_error_exists': "ഉപയോക്തൃനാമം നിലവിലുണ്ട്. ദയവായി മറ്റൊന്ന് തിരഞ്ഞെടുക്കുക.",
+        'signup_error_general': "രജിസ്ട്രേഷൻ സമയത്ത് ഒരു പിശക് സംഭവിച്ചു.",
+        'welcome_back': "തിരികെ സ്വാഗതം, {username}!",
+        'profile_header': "👤 എൻ്റെ പ്രൊഫൈൽ",
+        'profile_subheader': "നിങ്ങളുടെ അക്കൗണ്ട് വിശദാംശങ്ങളും ക്രമീകരണങ്ങളും നിയന്ത്രിക്കുക.",
+        'full_name_label': "മുഴുവൻ പേര്", 'contact_number_label': "ബന്ധപ്പെടാനുള്ള നമ്പർ",
+        'new_username_label': "പുതിയ ഉപയോക്തൃനാമം",
+        'new_password_label': "പുതിയ പാസ്‌വേഡ്",
+        'confirm_password_label': "പുതിയ പാസ്‌വേഡ് സ്ഥിരീകരിക്കുക",
+        'profile_pic_label': "പ്രൊഫൈൽ ചിത്രം",
+        'update_profile_button': "പ്രൊഫൈൽ അപ്ഡേറ്റ് ചെയ്യുക",
+        'profile_update_success': "✅ പ്രൊഫൈൽ വിജയകരമായി അപ്ഡേറ്റ് ചെയ്തു!",
+        'profile_update_error': "❌ പ്രൊഫൈൽ അപ്ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ഉപയോക്തൃനാമം ഇതിനകം നിലവിലുണ്ടാകാം.",
+        'password_mismatch_error': "പാസ്‌വേഡുകൾ പൊരുത്തപ്പെടുന്നില്ല.",
+        'danger_zone_header': "🚨 അപകട മേഖല",
+        'delete_account_button': "എൻ്റെ അക്കൗണ്ട് ഇല്ലാതാക്കുക",
+        'delete_account_warning': "ഈ പ്രവർത്തനം മാറ്റാനാവാത്തതാണ്. നിങ്ങളുടെ എല്ലാ ഡാറ്റയും ശാശ്വതമായി ഇല്ലാതാക്കപ്പെടും.",
+        'delete_confirmation_label': "സ്ഥിരീകരിക്കുന്നതിന്, ദയവായി താഴെയുള്ള ബോക്സിൽ `DELETE` എന്ന് ടൈപ്പ് ചെയ്യുക.",
+        'delete_account_confirm_button': "അതെ, എൻ്റെ അക്കൗണ്ട് ഇല്ലാതാക്കാൻ ഞാൻ ആഗ്രഹിക്കുന്നു",
+        'account_deleted_success': "നിങ്ങളുടെ അക്കൗണ്ട് വിജയകരമായി ഇല്ലാതാക്കി.",
+        'incorrect_delete_confirmation': "തെറ്റായ സ്ഥിരീകരണ വാചകം.",
+        'logs_header': "എൻ്റെ കൃഷി ലോഗുകൾ", 'logs_intro': "നിങ്ങളുടെ ദൈനംദിന പ്രവർത്തനങ്ങൾ, നിരീക്ഷണങ്ങൾ, കുറിപ്പുകൾ എന്നിവ ഇവിടെ രേഖപ്പെടുത്തുക.", 'new_log_label': "പുതിയ ലോഗ് എൻട്രി", 'save_log_button': "ലോഗ് സംരക്ഷിക്കുക", 'log_saved_success': "ലോഗ് എൻട്രി വിജയകരമായി സംരക്ഷിച്ചു!", 'past_logs_header': "📖 പഴയ എൻട്രികൾ", 'no_logs_message': "നിങ്ങൾക്ക് ഇതുവരെ ലോഗ് എൻട്രികളൊന്നും ഇല്ല.", 'delete_log_button': "ഇല്ലാതാക്കുക", 'log_deleted_success': "ലോഗ് ഇല്ലാതാക്കി!", 'record_log_prompt': "ഒരു വോയിസ് നോട്ട് അറ്റാച്ചുചെയ്യുക:", 'voice_note_recorded': "🎤 വോയിസ് നോട്ട് റെക്കോർഡുചെയ്‌തു, നിങ്ങളുടെ ലോഗിനൊപ്പം സംരക്ഷിക്കാൻ തയ്യാറാണ്.", 'attached_voice_note': "അറ്റാച്ചുചെയ്ത വോയിസ് നോട്ട്:",
+        'upload_media_label': "ഫോട്ടോകളോ വീഡിയോകളോ അറ്റാച്ചുചെയ്യുക:",
+        'attached_images': "അറ്റാച്ചുചെയ്ത ചിത്രങ്ങൾ:",
+        'attached_videos': "അറ്റാച്ചുചെയ്ത വീഡിയോകൾ:",
+        'forum_header': "👥 കമ്മ്യൂണിറ്റി ഫോറം",
+        'forum_intro': "മറ്റ് കർഷകരുമായി ബന്ധപ്പെടുക. ചോദ്യങ്ങൾ ചോദിക്കുക, പരിഹാരങ്ങൾ പങ്കിടുക, ഒരുമിച്ച് വളരുക.",
+        'create_post_header': "ഒരു പുതിയ പോസ്റ്റ് സൃഷ്ടിക്കുക",
+        'post_title_label': "തലക്കെട്ട്",
+        'post_title_placeholder': "വ്യക്തവും സംക്ഷിപ്തവുമായ ഒരു തലക്കെട്ട് നൽകുക",
+        'post_content_label': "നിങ്ങളുടെ ചോദ്യം അല്ലെങ്കിൽ നിർദ്ദേശം",
+        'post_content_placeholder': "നിങ്ങളുടെ പ്രശ്നം വിവരിക്കുക അല്ലെങ്കിൽ നിങ്ങളുടെ അറിവ് വിശദമായി പങ്കിടുക...",
+        'upload_image_label': "ഒരു ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (ഓപ്ഷണൽ)",
+        'submit_post_button': "പോസ്റ്റ് സമർപ്പിക്കുക",
+        'post_success_message': "✅ നിങ്ങളുടെ പോസ്റ്റ് പ്രസിദ്ധീകരിച്ചു!",
+        'all_posts_header': "എല്ലാ പോസ്റ്റുകളും",
+        'posted_by': "{username} പോസ്റ്റ് ചെയ്തത്, തീയതി: {date}",
+        'like_button': "👍 ലൈക്ക് ചെയ്യുക ({count})",
+        'reply_button': "💬 മറുപടി നൽകുക",
+        'replies_header': "മറുപടികൾ",
+        'add_reply_placeholder': "ഒരു മറുപടി എഴുതുക...",
+        'submit_reply_button': "മറുപടി പോസ്റ്റ് ചെയ്യുക",
+        'no_posts_message': "ഇതുവരെ പോസ്റ്റുകളൊന്നുമില്ല. ഒരു സംഭാഷണം ആരംഭിക്കുന്ന ആദ്യത്തെയാളാകൂ!",
+        'view_replies': "{count} മറുപടികൾ കാണുക",
+        'hide_replies': "മറുപടികൾ മറയ്ക്കുക",
+    },
+    'ta': {
+        'app_title': "கிருஷிசகி", 'go_to': "செல்க", 'language_selector_label': "மொழி",
+        'page_home': "முகப்பு", 'page_crop_recommendation': "பயிர் பரிந்துரை", 'page_yield_prediction': "விளைச்சல் கணிப்பு", 'page_crop_calendar': "பயிர் காலண்டர்", 'page_weather_report': "வானிலை அறிக்கை", 'page_leaf_disease_prediction': "இலை நோய் கணிப்பு", 'page_translator': "மொழிபெயர்ப்பாளர்", 'page_ai_chatbot': "AI அரட்டைப்பெட்டி", 'page_profile': "சுயவிவரம்", 'page_logs': "பதிவுகள்", 'page_community_forum': "சமூக மன்றம்",
+        'page_crop_guide': "பயிர் வழிகாட்டி",
+        'crop_guide_title': "பயிர் உரமிடுதல் மற்றும் நீர்ப்பாசன வழிகாட்டி",
+        'select_stage_label': "வளர்ச்சி நிலையைத் தேர்ந்தெடுக்கவும்",
+        'guide_table_header': "வழிகாட்டுதல் விவரங்கள்",
+        'file_not_found_error': "'kerala_fertigation_irrigation.csv' கோப்பு காணப்படவில்லை. அது சரியான கோப்புறையில் உள்ளதா என்பதை உறுதிப்படுத்தவும்.",
+        'home_title': "கிருஷிசகிக்கு வரவேற்கிறோம்! 🌱", 'home_subtitle': "நவீன விவசாயத்திற்கான உங்கள் AI-இயங்கும் உதவியாளர்.",
+        'home_intro': "*கிருஷிசகி* விவசாயிகளுக்கு தரவு சார்ந்த நுண்ணறிவுகளை வழங்க வடிவமைக்கப்பட்டுள்ளது.\nபல்வேறு அம்சங்களை அணுக பக்க பட்டியில் உள்ள பிரிவுகளுக்கு செல்லவும்:\n- *🌾 பயிர் பரிந்துரை:* மண் மற்றும் சுற்றுச்சூழல் காரணிகளின் அடிப்படையில் பயிரிட சிறந்த பயிர்களுக்கான பரிந்துரைகளைப் பெறுங்கள்.\n- *📈 விளைச்சல் கணிப்பு:* வரலாற்றுத் தரவு மற்றும் விவசாய அளவுருக்களின் அடிப்படையில் உங்கள் பயிர் விளைச்சலைக் கணிக்கவும்.\n- *🗓 பயிர் காலண்டர்:* கேரளாவில் பல்வேறு பயிர்களுக்கான சிறந்த விதைப்பு மற்றும் அறுவடை நேரங்களைக் காண்க.\n- *🌦 வானிலை அறிக்கை:* உங்கள் இருப்பிடத்திற்கான நிகழ்நேர வானிலை அறிவிப்புகள் மற்றும் முன்னறிவிப்புகளைப் பெறுங்கள்.\n- *🌿 இலை நோய் கணிப்பு:* நோய்களை முன்கூட்டியே கண்டறிய ஒரு இலை படத்தை பதிவேற்றவும்.\n- *🌐 மொழிபெயர்ப்பாளர்:* விவசாய சொற்களையும் வாக்கியங்களையும் பல்வேறு இந்திய மொழிகளுக்கு இடையில் மொழிபெயர்க்கவும்.\n- *🤖 AI அரட்டைப்பெட்டி:* உங்கள் விவசாய கேள்விகளுக்கு உதவ ஒரு சக்திவாய்ந்த AI அரட்டைப்பெட்டிக்காக காத்திருங்கள்.\n- *👥 சமூக மன்றம்:* மற்ற விவசாயிகளுடன் இணையுங்கள், கேள்விகளைக் கேளுங்கள், தீர்வுகளைப் பகிர்ந்து கொள்ளுங்கள்.",
+        'crop_rec_header': "🌾 பயிர் பரிந்துரை", 'crop_rec_intro': "பயிர் பரிந்துரையைப் பெற பின்வரும் விவரங்களை உள்ளிடவும்.",
+        'nitrogen_label': "நைட்ரஜன் (N)", 'phosphorus_label': "பாஸ்பரஸ் (P)", 'potassium_label': "பொட்டாசியம் (K)", 'temperature_label': "வெப்பநிலை (°C)", 'humidity_label': "ஈரப்பதம் (%)", 'ph_label': "pH மதிப்பு", 'rainfall_label': "மழையளவு (mm)",
+        'recommend_crop_button': "பயிரைப் பரிந்துரைக்கவும்", 'recommendation_success': "🎉 பரிந்துரைக்கப்பட்ட பயிர் *{crop}* ஆகும்.",
+        'crop_info_header': "{crop} பற்றி மேலும் தகவல்", 'description_heading': "📖 விளக்கம்", 'irrigation_heading': "💧 பாசன குறிப்புகள்", 'conditions_heading': "☀️ சிறந்த நிபந்தனைகள்", 'pests_heading': "🐛 பொதுவான பூச்சிகள் மற்றும் நோய்கள்",
+        'yield_pred_header': "📈 விளைச்சல் கணிப்பு", 'yield_pred_intro': "கேரளாவின் ஒரு குறிப்பிட்ட பகுதிக்கான பயிர் விளைச்சலைக் கணிக்க கீழே உள்ள விவரங்களை நிரப்பவும்.",
+        'year_label': "ஆண்டு", 'crop_label': "பயிர்", 'season_label': "பருவம்", 'area_label': "பரப்பளவு (ஹெக்டேரில்)",
+        'predict_yield_button': "விளைச்சலைக் கணிக்கவும்", 'yield_prediction_success': "🌾 கணிக்கப்பட்ட பயிர் விளைச்சல் தோராயமாக *{yield_val:.2f} கிகி/ஹெக்டேர்* ஆகும்.",
+        'market_price_header': "💰 மதிப்பிடப்பட்ட சந்தை மதிப்பு", 'fetching_prices_spinner': "சமீபத்திய சந்தை விலைகளைப் பெறுகிறது...", 'market_price_label': "சராசரி சந்தை விலை ( குவிண்டாலுக்கு)", 'total_value_label': "மொத்த மதிப்பிடப்பட்ட மதிப்பு", 'price_not_available': "{crop} க்கான விலை தரவு தற்போது கிடைக்கவில்லை.", 'price_api_error': "தற்போது சந்தை விலை தரவைப் பெற முடியவில்லை.",
+        'crop_calendar_header': "🗓 கேரள பயிர் விதைப்பு மற்றும் அறுவடை காலண்டர்", 'select_crop_label': "ஒரு பயிரைத் தேர்ந்தெடுக்கவும்",
+        'schedule_for_crop': "📅 {crop}-க்கான அட்டவணை", 'sowing_start_label': "விதைப்பு தொடக்கம்", 'sowing_end_label': "விதைப்பு முடிவு", 'harvest_start_label': "அறுவடை தொடக்கம்", 'harvest_end_label': "அறுவடை முடிவு", 'fertiliser_label': "உரம் (N:P:K கிலோ/ஹெக்டேர்)", 'duration_label': "காலம்",
+        'weather_report_header': "🌦 வானிலை அறிக்கை", 'enter_city_label': "உங்கள் நகரத்தின் பெயரை உள்ளிடவும்", 'get_weather_button': "வானிலை பெறுக",
+        'current_weather_in': "{location}-ல் தற்போதைய வானிலை", 'temperature_metric': "வெப்பநிலை", 'feels_like_metric': "உணர்வது போல்", 'humidity_metric': "ஈரப்பதம்",
+        'description_label': "விளக்கம்:", 'wind_label': "காற்று:", 'precipitation_label': "மழைப்பொழிவு:",
+        'forecast_header': "🗓 3-நாள் முன்னறிவிப்பு", 'avg_temp_label': "சராசரி வெப்பநிலை:", 'max_temp_label': "அதிகபட்ச வெப்பநிலை:", 'min_temp_label': "குறைந்தபட்ச வெப்பநிலை:", 'sunrise_label': "சூரிய உதயம்:", 'sunset_label': "சூரிய அஸ்தமனம்:", 'outlook_label': "கண்ணோட்டம்:",
+        'error_parsing_weather': "வானிலை தரவை பாகுபடுத்த முடியவில்லை. தயவுசெய்து நகரத்தின் பெயரைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும். பிழை: {e}", 'enter_city_warning': "⚠ தயவுசெய்து ஒரு நகரத்தின் பெயரை உள்ளிடவும்.",
+        'translator_header': "🌐 விவசாயி மொழி மொழிபெயர்ப்பாளர்", 'translator_intro': "✍ மொழிபெயர்க்க உரையை உள்ளிடவும்", 'translate_button': "🔄 மொழிபெயர்க்கவும்",
+        'translation_failed_error': "❌ மொழிபெயர்ப்பு தோல்வியடைந்தது: {e}", 'enter_text_warning': "⚠ தயவுசெய்து சில உரையை உள்ளிடவும்.",
+        'ai_chatbot_header': "🤖 AI அரட்டைப்பெட்டி",
+        'ai_chatbot_intro': "இந்த அம்சம் விரைவில் வருகிறது! உங்கள் விவசாய கேள்விகளுக்கு உதவ ஒரு சக்திவாய்ந்த AI அரட்டைப்பெட்டிக்காக காத்திருங்கள்.",
+        'languages_supported_label': "ஆதரிக்கப்படும் மொழிகள்", 'farmers_helped_label': "உதவப்பட்ட விவசாயிகள்", 'crops_covered_label': "உள்ளடக்கப்பட்ட பயிர்கள்", 'recommendations_given_label': "AI பரிந்துரைகள்",
+        'leaf_disease_header': "🌿 இலை நோய் கணிப்பு", 'leaf_disease_intro': "நோய்களைச் சரிபார்க்க தாவர இலையின் படத்தை பதிவேற்றவும்.", 'model_not_found_warning': "⚠ நோய் கணிப்பு மாதிரி காணப்படவில்லை. தயவுசெய்து நிர்வாகியைத் தொடர்பு கொள்ளவும்.",
+        'uploader_label': "இலையின் படத்தைத் தேர்ந்தெடுக்கவும்...", 'uploaded_image_caption': "பதிவேற்றிய படம்.", 'predict_disease_button': "🔍 நோயைக் கணிக்கவும்",
+        'predicting_spinner': "இலையை பகுப்பாய்வு செய்கிறது...", 'prediction_result': "✅ கணிப்பு: *{disease}*",
+        'remedy_info_header': "{disease}-க்கான சிகிச்சை மற்றும் மேலாண்மை", 'disease_description_heading': "ℹ️ நோய் பற்றி", 'organic_remedies_heading': "🌿 இயற்கை வைத்தியம்", 'chemical_remedies_heading': "🧪 இரசாயன வைத்தியம்", 'healthy_plant_message': "ஒரு நல்ல செய்தி! உங்கள் ஆலை ஆரோக்கியமாக தெரிகிறது. நல்ல விவசாய நடைமுறைகளைத் தொடரவும்.",
+        'page_pest_prediction': "பூச்சி முன்கணிப்பு",
+        'pest_prediction_header': "படத்திலிருந்து பூச்சிகளை அடையாளம் காணுதல்",
+        'upload_image_pest': "பூச்சி அல்லது பாதிக்கப்பட்ட இலையின் படத்தை பதிவேற்றவும்",
+        'prediction_pest': "கணிக்கப்பட்ட பூச்சி",
+        'model_loading_error': "பூச்சி முன்கணிப்பு மாதிரியை ஏற்ற முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.",
+        # ... (add other translations for Tamil here)
+        'feedback_header': "பின்னூட்டம்", 'rating_label': "உங்கள் அனுபவத்தை மதிப்பிடுங்கள்:", 'submit_button': "சமர்ப்பிக்கவும்", 'feedback_success': "உங்கள் கருத்துக்கு நன்றி!",
+        'contact_header': "தொடர்பு கொள்ளவும்",
+        'weather_api_key_error': "API விசை பிழை: {message}. secrets.toml இல் உங்கள் OpenWeatherMap API விசையைச் சரிபார்க்கவும். புதிய விசைகள் செயல்பட சில மணிநேரங்கள் ஆகலாம்.",
+        'weather_city_not_found_error': "நகரம் காணப்படவில்லை பிழை: {message}. நகரத்தின் பெயரின் எழுத்துப்பிழையை சரிபார்க்கவும்.",
+        'weather_api_generic_error': "API பிழை ({cod}): {message}",
+        'login_page_title': "கிருஷிசகிக்கு வரவேற்கிறோம் 🌱",
+        'login_tab': "உள்நுழைக", 'signup_tab': "பதிவு செய்க",
+        'username_label': "பயனர்பெயர்", 'password_label': "கடவுச்சொல்",
+        'login_button': "உள்நுழைக", 'signup_button': "பதிவு செய்க",
+        'logout_button': "வெளியேறு",
+        'login_error': "தவறான பயனர்பெயர் அல்லது கடவுச்சொல்.",
+        'signup_success': "பதிவு வெற்றிகரமாக முடிந்தது! தயவுசெய்து உள்நுழையவும்.",
+        'signup_error_exists': "பயனர்பெயர் ஏற்கனவே உள்ளது. தயவுசெய்து மற்றொன்றைத் தேர்ந்தெடுக்கவும்.",
+        'signup_error_general': "பதிவின் போது ஒரு பிழை ஏற்பட்டது.",
+        'welcome_back': "மீண்டும் வருக, {username}!",
+        'profile_header': "👤 எனது சுயவிவரம்",
+        'profile_subheader': "உங்கள் கணக்கு விவரங்கள் மற்றும் அமைப்புகளை நிர்வகிக்கவும்.",
+        'full_name_label': "முழு பெயர்", 'contact_number_label': "தொடர்பு எண்",
+        'new_username_label': "புதிய பயனர்பெயர்",
+        'new_password_label': "புதிய கடவுச்சொல்",
+        'confirm_password_label': "புதிய கடவுச்சொல்லை உறுதிப்படுத்தவும்",
+        'profile_pic_label': "சுயவிவரப் படம்",
+        'update_profile_button': "சுயவிவரத்தைப் புதுப்பிக்கவும்",
+        'profile_update_success': "✅ சுயவிவரம் வெற்றிகரமாக புதுப்பிக்கப்பட்டது!",
+        'profile_update_error': "❌ சுயவிவரத்தைப் புதுப்பிக்க முடியவில்லை. பயனர்பெயர் ஏற்கனவே இருக்கலாம்.",
+        'password_mismatch_error': "கடவுச்சொற்கள் பொருந்தவில்லை.",
+        'danger_zone_header': "🚨 ஆபத்து மண்டலம்",
+        'delete_account_button': "எனது கணக்கை நீக்கு",
+        'delete_account_warning': "இந்த நடவடிக்கை மாற்ற முடியாதது. உங்கள் எல்லா தரவும் நிரந்தரமாக நீக்கப்படும்.",
+        'delete_confirmation_label': "உறுதிப்படுத்த, கீழே உள்ள பெட்டியில் `DELETE` என தட்டச்சு செய்யவும்.",
+        'delete_account_confirm_button': "ஆம், எனது கணக்கை நீக்க விரும்புகிறேன்",
+        'account_deleted_success': "உங்கள் கணக்கு வெற்றிகரமாக நீக்கப்பட்டது.",
+        'incorrect_delete_confirmation': "தவறான உறுதிப்படுத்தல் உரை.",
+        'logs_header': "எனது விவசாய பதிவுகள்", 'logs_intro': "உங்கள் தினசரி நடவடிக்கைகள், அவதானிப்புகள் மற்றும் குறிப்புகளை இங்கே பதிவு செய்யவும்.", 'new_log_label': "புதிய பதிவு நுழைவு", 'save_log_button': "பதிவைச் சேமி", 'log_saved_success': "பதிவு நுழைவு வெற்றிகரமாக சேமிக்கப்பட்டது!", 'past_logs_header': "📖 கடந்த பதிவுகள்", 'no_logs_message': "உங்களிடம் இன்னும் பதிவு உள்ளீடுகள் எதுவும் இல்லை.", 'delete_log_button': "அழி", 'log_deleted_success': "பதிவு நீக்கப்பட்டது!", 'record_log_prompt': "ஒரு குரல் குறிப்பை இணைக்கவும்:", 'voice_note_recorded': "🎤 குரல் குறிப்பு பதிவு செய்யப்பட்டு உங்கள் பதிவில் சேமிக்க தயாராக உள்ளது.", 'attached_voice_note': "இணைக்கப்பட்ட குரல் குறிப்பு:",
+        'upload_media_label': "புகைப்படங்கள் அல்லது வீடியோக்களை இணைக்கவும்:",
+        'attached_images': "இணைக்கப்பட்ட படங்கள்:",
+        'attached_videos': "இணைக்கப்பட்ட வீடியோக்கள்:",
+        'forum_header': "👥 சமூக மன்றம்",
+        'forum_intro': "மற்ற விவசாயிகளுடன் இணையுங்கள். கேள்விகளைக் கேளுங்கள், தீர்வுகளைப் பகிர்ந்து கொள்ளுங்கள், ஒன்றாக வளருங்கள்.",
+        'create_post_header': "புதிய இடுகையை உருவாக்கவும்",
+        'post_title_label': "தலைப்பு",
+        'post_title_placeholder': "தெளிவான மற்றும் சுருக்கமான தலைப்பை உள்ளிடவும்",
+        'post_content_label': "உங்கள் கேள்வி அல்லது குறிப்பு",
+        'post_content_placeholder': "உங்கள் சிக்கலை விவரிக்கவும் அல்லது உங்கள் அறிவை விரிவாகப் பகிரவும்...",
+        'upload_image_label': "ஒரு படத்தைப் பதிவேற்றவும் (விருப்பத்தேர்வு)",
+        'submit_post_button': "இடுகையைச் சமர்ப்பிக்கவும்",
+        'post_success_message': "✅ உங்கள் இடுகை வெளியிடப்பட்டது!",
+        'all_posts_header': "அனைத்து இடுகைகளும்",
+        'posted_by': "{username} ஆல் {date} அன்று வெளியிடப்பட்டது",
+        'like_button': "👍 விரும்புக ({count})",
+        'reply_button': "💬 பதிலளி",
+        'replies_header': "பதில்கள்",
+        'add_reply_placeholder': "பதிலை எழுதுங்கள்...",
+        'submit_reply_button': "பதிலை இடுகையிடவும்",
+        'no_posts_message': "இன்னும் இடுகைகள் இல்லை. உரையாடலைத் தொடங்குபவர் நீங்களாக இருங்கள்!",
+        'view_replies': "{count} பதில்களைக் காண்க",
+        'hide_replies': "பதில்களை மறை",
+    },
+    'te': {
+        'app_title': "కృషిసఖి", 'go_to': "వెళ్ళండి", 'language_selector_label': "భాష",
+        'page_home': "హోమ్", 'page_crop_recommendation': "పంట సిఫార్సు", 'page_yield_prediction': "దిగుబడి అంచనా", 'page_crop_calendar': "పంట క్యాలెండర్", 'page_weather_report': "వాతావరణ నివేదిక", 'page_leaf_disease_prediction': "ఆకు వ్యాధి πρόβλεψη", 'page_translator': "అనువాదకుడు", 'page_ai_chatbot': "AI చాట్‌బాట్", 'page_profile': "ప్రొఫైల్", 'page_logs': "లాగ్‌లు", 'page_community_forum': "కమ్యూనిటీ ఫోరమ్",
+        'page_crop_guide': "పంట గైడ్",
+        'crop_guide_title': "పంట ఫలదీకరణ మరియు నీటిపారుదల గైడ్",
+        'select_stage_label': "పెరుగుదల దశను ఎంచుకోండి",
+        'guide_table_header': "మార్గదర్శక వివరాలు",
+        'file_not_found_error': "'kerala_fertigation_irrigation.csv' ఫైల్ కనుగొనబడలేదు. దయచేసి అది సరైన ఫోల్డర్‌లో ఉందని నిర్ధారించుకోండి.",
+        'home_title': "కృషిసఖికి స్వాగతం! 🌱", 'home_subtitle': "ఆధునిక వ్యవసాయం కోసం మీ AI-ఆధారిత సహాయకుడు.",
+        'home_intro': "*కృషిసఖి* రైతులకు డేటా-ఆధారిత అంతర్దృష్టులను అందించడానికి రూపొందించబడింది.\nవివిధ ఫీచర్లను యాక్సెస్ చేయడానికి సైడ్‌బార్‌లోని విభాగాల ద్వారా నావిగేట్ చేయండి:\n- *🌾 పంట సిఫార్సు:* నేల మరియు పర్యావరణ కారకాల ఆధారంగా నాటడానికి ఉత్తమమైన పంటల కోసం సూచనలను పొందండి.\n- *📈 దిగుబడి అంచనా:* చారిత్రక డేటా మరియు వ్యవసాయ పారామితుల ఆధారంగా మీ పంట దిగుబడిని అంచనా వేయండి.\n- *🗓 పంట క్యాలెండర్:* కేరళలోని వివిధ పంటలకు అనువైన విత్తనాలు మరియు కోత సమయాలను వీక్షించండి.\n- *🌦 వాతావరణ నివేదిక:* మీ స్థానం కోసం నిజ-సమయ వాతావరణ నవీకరణలు మరియు అంచనాలను పొందండి.\n- *🌿 ఆకు వ్యాధి πρόβλεψη:* వ్యాధులను ముందుగా గుర్తించడానికి ఆకు చిత్రాన్ని అప్‌లోడ్ చేయండి.\n- *🌐 అనువాదకుడు:* వ్యవసాయ పదాలు మరియు వాక్యాలను వివిధ భారతీయ భాషల మధ్య అనువదించండి.\n- *🤖 AI చాట్‌బాట్:* మీ వ్యవసాయ ప్రశ్నలకు సహాయపడటానికి ఒక శక్తివంతమైన AI చాట్‌బాట్ కోసం వేచి ఉండండి.\n- *👥 కమ్యూనిటీ ఫోరమ్:* ఇతర రైతులతో కనెక్ట్ అవ్వండి, ప్రశ్నలు అడగండి మరియు పరిష్కారాలను పంచుకోండి.",
+        'crop_rec_header': "🌾 పంట సిఫార్సు", 'crop_rec_intro': "పంట సిఫార్సు పొందడానికి క్రింది వివరాలను నమోదు చేయండి.",
+        'nitrogen_label': "నత్రజని (N)", 'phosphorus_label': "భాస్వరం (P)", 'potassium_label': "పొటాషియం (K)", 'temperature_label': "ఉష్ణోగ్రత (°C)", 'humidity_label': "తేమ (%)", 'ph_label': "pH విలువ", 'rainfall_label': "వర్షపాతం (mm)",
+        'recommend_crop_button': "పంటను సిఫార్సు చేయండి", 'recommendation_success': "🎉 సిఫార్సు చేయబడిన పంట *{crop}*.",
+        'crop_info_header': "{crop} గురించి మరింత సమాచారం", 'description_heading': "📖 వివరణ", 'irrigation_heading': "💧 నీటిపారుదల చిట్కాలు", 'conditions_heading': "☀️ ఆదర్శ పరిస్థితులు", 'pests_heading': "🐛 సాధారణ తెగుళ్లు & వ్యాధులు",
+        'yield_pred_header': "📈 దిగుబడి అంచనా", 'yield_pred_intro': "కేరళలోని ఒక నిర్దిష్ట ప్రాంతానికి పంట దిగుబడిని అంచనా వేయడానికి క్రింది వివరాలను పూరించండి.",
+        'year_label': "సంవత్సరం", 'crop_label': "పంట", 'season_label': "సీజన్", 'area_label': "విస్తీర్ణం (హెక్టార్లలో)",
+        'predict_yield_button': "దిగుబడిని అంచనా వేయండి", 'yield_prediction_success': "🌾 అంచనా వేయబడిన పంట దిగుబడి సుమారుగా *{yield_val:.2f} కేజీలు/హెక్టారు*.",
+        'market_price_header': "💰 అంచనా వేయబడిన మార్కెట్ విలువ", 'fetching_prices_spinner': "తాజా మార్కెట్ ధరలను పొందుతోంది...", 'market_price_label': "సగటు మార్కెట్ ధర (క్వింటాల్‌కు)", 'total_value_label': "మొత్తం అంచనా విలువ", 'price_not_available': "{crop} కోసం ధర డేటా ప్రస్తుతం అందుబాటులో లేదు.", 'price_api_error': "ప్రస్తుతం మార్కెట్ ధర డేటాను పొందడం సాధ్యపడలేదు.",
+        'crop_calendar_header': "🗓 కేరళ పంట విత్తనాలు మరియు కోత క్యాలెండర్", 'select_crop_label': "ఒక పంటను ఎంచుకోండి",
+        'schedule_for_crop': "📅 {crop} కోసం షెడ్యూల్", 'sowing_start_label': "విత్తనాలు ప్రారంభం", 'sowing_end_label': "విత్తనాలు ముగింపు", 'harvest_start_label': "కోత ప్రారంభం", 'harvest_end_label': "కోత ముగింపు", 'fertiliser_label': "ఎరువులు (N:P:K కేజీలు/హెక్టారు)", 'duration_label': "వ్యవధి",
+        'weather_report_header': "🌦 వాతావరణ నివేదిక", 'enter_city_label': "మీ నగరం పేరును నమోదు చేయండి", 'get_weather_button': "వాతావరణాన్ని పొందండి",
+        'current_weather_in': "{location}లో ప్రస్తుత వాతావరణం", 'temperature_metric': "ఉష్ణోగ్రత", 'feels_like_metric': "అనిపిస్తుంది", 'humidity_metric': "తేమ",
+        'description_label': "వివరణ:", 'wind_label': "గాలి:", 'precipitation_label': "వర్షపాతం:",
+        'forecast_header': "🗓 3-రోజుల అంచనా", 'avg_temp_label': "సగటు ఉష్ణోగ్రత:", 'max_temp_label': "గరిష్ట ఉష్ణోగ్రత:", 'min_temp_label': "కనిష్ట ఉష్ణోగ్రత:", 'sunrise_label': "సూర్యోదయం:", 'sunset_label': "సూర్యాస్తమయం:", 'outlook_label': "అవలోకనం:",
+        'error_parsing_weather': "వాతావరణ డేటాను పార్స్ చేయడంలో విఫలమైంది. దయచేసి నగరం పేరును తనిఖీ చేసి మళ్లీ ప్రయత్నించండి. దోషం: {e}", 'enter_city_warning': "⚠ దయచేసి ఒక నగరం పేరును నమోదు చేయండి.",
+        'translator_header': "🌐 రైతు భాషా అనువాదకుడు", 'translator_intro': "✍ అనువదించడానికి వచనాన్ని నమోదు చేయండి", 'translate_button': "🔄 అనువదించండి",
+        'translation_failed_error': "❌ అనువాదం విఫలమైంది: {e}", 'enter_text_warning': "⚠ దయచేసి కొంత వచనాన్ని నమోదు చేయండి.",
+        'ai_chatbot_header': "🤖 AI చాట్‌బాట్",
+        'ai_chatbot_intro': "ఈ ఫీచర్ త్వరలో వస్తుంది! మీ వ్యవసాయ ప్రశ్నలకు సహాయపడటానికి ఒక శక్తివంతమైన AI చాట్‌బాట్ కోసం వేచి ఉండండి.",
+        'languages_supported_label': "మద్దతు ఉన్న భాషలు", 'farmers_helped_label': "సహాయపడిన రైతులు", 'crops_covered_label': "కవర్ చేయబడిన పంటలు", 'recommendations_given_label': "AI సిఫార్సులు",
+        'leaf_disease_header': "🌿 ఆకు వ్యాధి πρόβλεψη", 'leaf_disease_intro': "వ్యాధులను తనిఖీ చేయడానికి మొక్క ఆకు యొక్క చిత్రాన్ని అప్‌లోడ్ చేయండి.", 'model_not_found_warning': "⚠ వ్యాధి πρόβλεψη నమూనా కనుగొనబడలేదు. దయచేసి నిర్వాహకుడిని సంప్రదించండి.",
+        'uploader_label': "ఆకు చిత్రాన్ని ఎంచుకోండి...", 'uploaded_image_caption': "అప్‌లోడ్ చేయబడిన చిత్రం.", 'predict_disease_button': "🔍 వ్యాధిని అంచనా వేయండి",
+        'predicting_spinner': "ఆకును విశ్లేషిస్తోంది...", 'prediction_result': "✅ అంచనా: *{disease}*",
+        'remedy_info_header': "{disease} కోసం చికిత్స మరియు నిర్వహణ", 'disease_description_heading': "ℹ️ వ్యాధి గురించి", 'organic_remedies_heading': "🌿 సేంద్రీయ నివారణలు", 'chemical_remedies_heading': "🧪 రసాయన నివారణలు", 'healthy_plant_message': "శుభవార్త! మీ మొక్క ఆరోగ్యంగా కనిపిస్తుంది. మంచి వ్యవసాయ పద్ధతులను కొనసాగించండి.",
+        'page_pest_prediction': "కీటక అంచనా",
+        'pest_prediction_header': "చిత్రం నుండి కీటకాలను గుర్తించడం",
+        'upload_image_pest': "కీటకం లేదా ప్రభావిత ఆకు యొక్క చిత్రాన్ని అప్‌లోడ్ చేయండి",
+        'prediction_pest': "అంచనా వేసిన కీటకం",
+        'model_loading_error': "కీటక అంచనా మోడల్‌ను లోడ్ చేయలేకపోయాము. దయచేసి ఇంటర్నెట్ కనెక్షన్‌ను తనిఖీ చేయండి.",
+        # ... (add other translations for Telugu here)
+        'feedback_header': "అభిప్రాయం", 'rating_label': "మీ అనుభవాన్ని రేట్ చేయండి:", 'submit_button': "సమర్పించు", 'feedback_success': "మీ అభిప్రాయానికి ధన్యవాదాలు!",
+        'contact_header': "సంప్రదించండి",
+        'weather_api_key_error': "API కీ లోపం: {message}. దయచేసి secrets.tomlలో మీ OpenWeatherMap API కీని తనిఖీ చేయండి. కొత్త కీలు సక్రియం కావడానికి కొన్ని గంటల సమయం పట్టవచ్చు.",
+        'weather_city_not_found_error': "నగరం కనుగొనబడలేదు లోపం: {message}. దయచేసి నగరం పేరు యొక్క స్పెల్లింగ్‌ను తనిఖీ చేయండి.",
+        'weather_api_generic_error': "API లోపం ({cod}): {message}",
+        'login_page_title': "కృషిసఖికి స్వాగతం 🌱",
+        'login_tab': "లాగిన్", 'signup_tab': "నమోదు చేసుకోండి",
+        'username_label': "వినియోగదారు పేరు", 'password_label': "పాస్‌వర్డ్",
+        'login_button': "లాగిన్", 'signup_button': "నమోదు చేసుకోండి",
+        'logout_button': "లాగ్ అవుట్",
+        'login_error': "తప్పు వినియోగదారు పేరు లేదా పాస్‌వర్డ్.",
+        'signup_success': "నమోదు విజయవంతమైంది! దయచేసి లాగిన్ చేయండి.",
+        'signup_error_exists': "వినియోగదారు పేరు ఇప్పటికే ఉంది. దయచేసి మరొకదాన్ని ఎంచుకోండి.",
+        'signup_error_general': "నమోదు సమయంలో ఒక లోపం సంభవించింది.",
+        'welcome_back': "తిరిగి స్వాగతం, {username}!",
+        'profile_header': "👤 నా ప్రొఫైల్",
+        'profile_subheader': "మీ ఖాతా వివరాలు మరియు సెట్టింగ్‌లను నిర్వహించండి.",
+        'full_name_label': "పూర్తి పేరు", 'contact_number_label': "సంప్రదింపు సంఖ్య",
+        'new_username_label': "కొత్త వినియోగదారు పేరు",
+        'new_password_label': "కొత్త పాస్వర్డ్",
+        'confirm_password_label': "కొత్త పాస్‌వర్డ్‌ను నిర్ధారించండి",
+        'profile_pic_label': "ప్రొఫైల్ చిత్రం",
+        'update_profile_button': "ప్రొఫైల్‌ను నవీకరించండి",
+        'profile_update_success': "✅ ప్రొఫైల్ విజయవంతంగా నవీకరించబడింది!",
+        'profile_update_error': "❌ ప్రొఫైల్‌ను నవీకరించడంలో విఫలమైంది. వినియోగదారు పేరు ఇప్పటికే ఉండవచ్చు.",
+        'password_mismatch_error': "పాస్వర్డ్లు సరిపోలడం లేదు.",
+        'danger_zone_header': "🚨 ప్రమాదకర ప్రాంతం",
+        'delete_account_button': "నా ఖాతాను తొలగించు",
+        'delete_account_warning': "ఈ చర్య మార్చలేనిది. మీ డేటా అంతా శాశ్వతంగా తొలగించబడుతుంది.",
+        'delete_confirmation_label': "ధృవీకరించడానికి, దయచేసి దిగువ పెట్టెలో `DELETE` అని టైప్ చేయండి.",
+        'delete_account_confirm_button': "అవును, నేను నా ఖాతాను తొలగించాలనుకుంటున్నాను",
+        'account_deleted_success': "మీ ఖాతా విజయవంతంగా తొలగించబడింది.",
+        'incorrect_delete_confirmation': "తప్పు నిర్ధారణ వచనం.",
+        'logs_header': "నా వ్యవసాయ లాగ్‌లు", 'logs_intro': "మీ రోజువారీ కార్యకలాపాలు, పరిశీలనలు మరియు గమనికలను ఇక్కడ రికార్డ్ చేయండి.", 'new_log_label': "కొత్త లాగ్ ఎంట్రీ", 'save_log_button': "లాగ్‌ను సేవ్ చేయండి", 'log_saved_success': "లాగ్ ఎంట్రీ విజయవంతంగా సేవ్ చేయబడింది!", 'past_logs_header': "📖 గత ఎంట్రీలు", 'no_logs_message': "మీకు ఇంకా లాగ్ ఎంట్రీలు లేవు.", 'delete_log_button': "తొలగించు", 'log_deleted_success': "లాగ్ తొలగించబడింది!", 'record_log_prompt': "ఒక వాయిస్ నోట్‌ను అటాచ్ చేయండి:", 'voice_note_recorded': "🎤 వాయిస్ నోట్ రికార్డ్ చేయబడింది మరియు మీ లాగ్‌తో సేవ్ చేయడానికి సిద్ధంగా ఉంది.", 'attached_voice_note': "అటాచ్ చేసిన వాయిస్ నోట్:",
+        'upload_media_label': "ఫోటోలు లేదా వీడియోలను అటాచ్ చేయండి:",
+        'attached_images': "అటాచ్ చేసిన చిత్రాలు:",
+        'attached_videos': "అటాచ్ చేసిన వీడియోలు:",
+        'forum_header': "👥 కమ్యూనిటీ ఫోరమ్",
+        'forum_intro': "ఇతర రైతులతో కనెక్ట్ అవ్వండి. ప్రశ్నలు అడగండి, పరిష్కారాలు పంచుకోండి మరియు కలిసి పెరగండి.",
+        'create_post_header': "కొత్త పోస్ట్‌ను సృష్టించండి",
+        'post_title_label': "శీర్షిక",
+        'post_title_placeholder': "స్పష్టమైన మరియు సంక్షిప్త శీర్షికను నమోదు చేయండి",
+        'post_content_label': "మీ ప్రశ్న లేదా చిట్కా",
+        'post_content_placeholder': "మీ సమస్యను వివరించండి లేదా మీ జ్ఞానాన్ని వివరంగా పంచుకోండి...",
+        'upload_image_label': "ఒక చిత్రాన్ని అప్‌లోడ్ చేయండి (ఐచ్ఛికం)",
+        'submit_post_button': "పోస్ట్‌ను సమర్పించండి",
+        'post_success_message': "✅ మీ పోస్ట్ ప్రచురించబడింది!",
+        'all_posts_header': "అన్ని పోస్ట్‌లు",
+        'posted_by': "{username} ద్వారా {date}న పోస్ట్ చేయబడింది",
+        'like_button': "👍 లైక్ ({count})",
+        'reply_button': "💬 ప్రత్యుత్తరం",
+        'replies_header': "ప్రత్యుత్తరాలు",
+        'add_reply_placeholder': "ఒక ప్రత్యుత్తరం వ్రాయండి...",
+        'submit_reply_button': "ప్రత్యుత్తరాన్ని పోస్ట్ చేయండి",
+        'no_posts_message': "ఇంకా పోస్ట్‌లు లేవు. సంభాషణను ప్రారంభించిన మొదటి వ్యక్తిగా ఉండండి!",
+        'view_replies': "{count} ప్రత్యుత్తరాలను వీక్షించండి",
+        'hide_replies': "ప్రత్యుత్తరాలను దాచండి",
+    },
+}
+
+# =====================================================================================
+# CROP AND DISEASE INFORMATION DATA
+# =====================================================================================
+CROP_INFO = {
+    'rice': {
+        'description': "A staple food for a large part of the world's human population, especially in Asia. It is the agricultural commodity with the third-highest worldwide production.",
+        'irrigation': "Requires standing water for a significant period of its growth cycle. Fields should be flooded to a depth of 5-10 cm. Intermittent irrigation (wetting and drying) can save water without significantly impacting yield.",
+        'conditions': "Prefers hot and humid climates. Ideal temperature range is 20°C to 37°C with high humidity and prolonged sunshine.",
+        'pests': "Stem borer, leafhopper, brown planthopper, gall midge. Diseases include blast, sheath blight, and bacterial leaf blight."
+    },
+    'maize': {
+        'description': "A cereal grain first domesticated by indigenous peoples in southern Mexico about 10,000 years ago. It has become a staple food in many parts of the world, with the total production of maize surpassing that of wheat or rice.",
+        'irrigation': "Requires water at critical stages: tasseling, silking, and grain filling. Drip irrigation is highly efficient. Avoid water stress during the reproductive phase.",
+        'conditions': "Grows best in warm climates. Ideal temperature is between 21°C and 27°C. Requires deep, fertile, and well-drained soil.",
+        'pests': "Fall armyworm, corn earworm, stem borer. Diseases include downy mildew, leaf blight, and rust."
+    },
+    'jute': {
+        'description': "A long, soft, shiny bast fiber that can be spun into coarse, strong threads. It is produced from flowering plants in the genus Corchorus.",
+        'irrigation': "Requires significant rainfall and humidity. Supplemental irrigation is needed during dry spells, especially in the early stages of growth.",
+        'conditions': "Grows well in alluvial soil and requires a warm, wet climate. Temperature range of 24°C to 37°C is ideal.",
+        'pests': "Jute semilooper, yellow mite, stem weevil. Diseases include stem rot, anthracnose, and root rot."
+    },
+    'cotton': {
+        'description': "A soft, fluffy staple fiber that grows in a boll, or protective case, around the seeds of the cotton plants of the genus Gossypium.",
+        'irrigation': "Water requirement is high. Critical stages for irrigation are flowering and boll formation. Drip irrigation can improve water use efficiency and yield.",
+        'conditions': "Requires a long frost-free period, plenty of sunshine, and moderate rainfall. Ideal temperatures are between 21°C and 37°C.",
+        'pests': "Bollworm complex (American, pink, spotted), aphids, jassids, whitefly. Diseases include bacterial blight, fusarium wilt, and leaf curl virus."
+    },
+    'coconut': {
+        'description': "A member of the palm tree family (Arecaceae) and the only known living species of the genus Cocos. The term 'coconut' can refer to the whole coconut palm, the seed, or the fruit.",
+        'irrigation': "Requires regular watering, especially for young palms and during dry seasons. A well-irrigated palm can yield up to 30% more. Basin irrigation is a common method.",
+        'conditions': "A tropical plant that thrives in sandy soils with high humidity and regular rainfall. Cannot tolerate cold temperatures.",
+        'pests': "Rhinoceros beetle, red palm weevil, eriophyid mite. Diseases include bud rot, leaf rot, and Tatipaka disease."
+    },
+    'papaya': {
+        'description': "The fruit of the plant Carica papaya. It is native to the tropics of the Americas, perhaps from southern Mexico and neighboring Central America.",
+        'irrigation': "Needs regular watering but is very sensitive to waterlogging. Ensure good drainage. Drip irrigation is recommended. Water weekly in dry seasons.",
+        'conditions': "Thrives in sunny, warm climates. Cannot tolerate frost. Well-drained soil is essential to prevent root rot.",
+        'pests': "Aphids, mealybugs, spider mites. Diseases include papaya ringspot virus, anthracnose, and powdery mildew."
+    },
+    'orange': {
+        'description': "The fruit of various citrus species in the family Rutaceae; it primarily refers to Citrus × sinensis, which is also called sweet orange.",
+        'irrigation': "Young trees need frequent watering. Mature trees need deep watering at longer intervals. Water needs are highest during fruit set and development.",
+        'conditions': "Prefers subtropical climates with moderate rainfall and sunshine. Well-drained, loamy soils are ideal.",
+        'pests': "Citrus psylla, leaf miner, scale insects. Diseases include citrus canker, gummosis, and powdery mildew."
+    },
+    'apple': {
+        'description': "A pome fruit produced by an apple tree (Malus domestica). Apple trees are cultivated worldwide and are the most widely grown species in the genus Malus.",
+        'irrigation': "Requires consistent moisture, especially during the growing season. Drip irrigation is effective. Water stress can lead to smaller fruits.",
+        'conditions': "Best suited for temperate climates with a distinct winter chilling period. Well-drained loamy soil is preferred.",
+        'pests': "Codling moth, aphids, apple maggot. Diseases include apple scab, fire blight, and powdery mildew."
+    },
+    'muskmelon': {
+        'description': "A species of melon that has been developed into many cultivated varieties. These varieties include smooth-skinned varieties like honeydew, crenshaw, and casaba, and netted-skin varieties.",
+        'irrigation': "Needs consistent watering, especially during fruit development. Avoid wetting the leaves and fruit to prevent diseases. Drip irrigation is ideal.",
+        'conditions': "A warm-season crop that requires a long growing season of hot, sunny weather. Sandy loam soils are best.",
+        'pests': "Aphids, cucumber beetles, squash bugs. Diseases include powdery mildew, downy mildew, and fusarium wilt."
+    },
+    'watermelon': {
+        'description': "A flowering plant species of the Cucurbitaceae family and the name of its edible fruit. A scrambling and trailing vine-like plant, it is a highly cultivated fruit worldwide, having more than 1,000 varieties.",
+        'irrigation': "Requires consistent and plentiful water, especially during the period from planting to when fruits begin to form. Reduce watering as fruits ripen to increase sugar content.",
+        'conditions': "Needs hot, sunny conditions to thrive. Prefers well-drained, sandy loam soil. Long growing season is a must.",
+        'pests': "Aphids, cucumber beetles, vine borers. Diseases include anthracnose, powdery mildew, and downy mildew."
+    },
+    'grapes': {
+        'description': "A fruit, botanically a berry, of the deciduous woody vines of the flowering plant genus Vitis.",
+        'irrigation': "Deep watering at intervals is better than frequent shallow watering. Drip irrigation is highly recommended to keep foliage dry and prevent fungal diseases.",
+        'conditions': "Require a long season of warm to hot, dry weather and full sun. Well-drained soil is crucial.",
+        'pests': "Grapevine moth, mealybugs, spider mites. Diseases include powdery mildew, downy mildew, and black rot."
+    },
+    'mango': {
+        'description': "An edible stone fruit produced by the tropical tree Mangifera indica. It is believed to have originated in the region between northwestern Myanmar, Bangladesh, and northeastern India.",
+        'irrigation': "Irrigation is not required during the monsoon. However, regular watering from fruit set to maturity is crucial for good yield and quality. Stop watering a few weeks before harvest.",
+        'conditions': "A tropical fruit that prefers climates with a distinct dry season for good fruit production. Cannot tolerate frost.",
+        'pests': "Mango hopper, mealybug, fruit fly. Diseases include anthracnose, powdery mildew, and malformation."
+    },
+    'banana': {
+        'description': "An elongated, edible fruit – botanically a berry – produced by several kinds of large herbaceous flowering plants in the genus Musa.",
+        'irrigation': "A water-intensive crop. Requires frequent irrigation to maintain soil moisture, especially during the vegetative growth phase. Drip irrigation is very effective.",
+        'conditions': "Thrives in tropical and subtropical regions. Requires rich, well-drained soil and high humidity.",
+        'pests': "Rhizome weevil, banana aphid, stem borer. Diseases include Panama wilt, Sigatoka leaf spot, and bunchy top virus."
+    },
+    'pomegranate': {
+        'description': "A fruit-bearing deciduous shrub in the family Lythraceae, subfamily Punicoideae, that grows between 5 and 10 m tall.",
+        'irrigation': "Drought-tolerant once established, but regular irrigation is necessary for good fruit production. Drip irrigation is the most suitable method.",
+        'conditions': "Prefers a semi-arid climate. Can tolerate hot, dry summers and cold winters. Well-drained soil is essential.",
+        'pests': "Pomegranate butterfly (fruit borer), aphids, mealybugs. Diseases include bacterial blight, leaf spot, and fruit rot."
+    },
+    'lentil': {
+        'description': "An edible legume. It is an annual plant known for its lens-shaped seeds. It is about 40 cm tall, and the seeds grow in pods, usually with two seeds in each.",
+        'irrigation': "Generally grown as a rainfed crop. One or two irrigations at flowering and pod-filling stages can significantly boost yield in dry conditions.",
+        'conditions': "A cool-season crop. Prefers well-drained, loamy soils. Can tolerate drought to some extent.",
+        'pests': "Aphids, pod borer. Diseases include rust, wilt, and blight."
+    },
+    'blackgram': {
+        'description': "A bean grown in the Indian subcontinent. It, along with the mung bean, was placed in the genus Vigna, and is still often seen as V. mungo.",
+        'irrigation': "Mostly grown as a rainfed crop. If necessary, one irrigation at the flowering stage is beneficial.",
+        'conditions': "Warm climate crop. Grows best in the Kharif season. Requires well-drained loamy or sandy loam soil.",
+        'pests': "Pod borer, whitefly. Diseases include yellow mosaic virus, powdery mildew, and leaf spot."
+    },
+    'mungbean': {
+        'description': "A plant species in the legume family. The mung bean is mainly cultivated in East Asia, Southeast Asia and the Indian subcontinent.",
+        'irrigation': "Short-duration crop, generally grown under rainfed conditions. One irrigation may be needed if there is a long dry spell during flowering.",
+        'conditions': "Requires a warm climate. Best grown during summer and Kharif seasons. Prefers well-drained loamy soil.",
+        'pests': "Pod borer, thrips. Diseases include yellow mosaic virus and powdery mildew."
+    },
+    'mothbeans': {
+        'description': "A drought-resistant legume, commonly grown in arid and semi-arid regions of India. It is a creeping annual vine.",
+        'irrigation': "Highly drought-resistant and typically grown without irrigation.",
+        'conditions': "Thrives in hot, dry, sandy soils. Extremely well-adapted to arid conditions.",
+        'pests': "Generally resistant to pests. Whitefly can be an issue. Diseases are rare."
+    },
+    'pigeonpeas': {
+        'description': "A perennial legume from the family Fabaceae. Since its domestication in the Indian subcontinent at least 3,500 years ago, its seeds have become a common food in Asia, Africa, and Latin America.",
+        'irrigation': "Deep-rooted and drought-resistant. Generally grown as a rainfed crop. One irrigation during pod development can increase yield.",
+        'conditions': "A tropical and subtropical crop. Requires well-drained soil and cannot tolerate waterlogging.",
+        'pests': "Pod borer, pod fly, maruca. Diseases include fusarium wilt and sterility mosaic disease."
+    },
+    'kidneybeans': {
+        'description': "A variety of the common bean (Phaseolus vulgaris). It is named for its visual resemblance in shape and color to a kidney.",
+        'irrigation': "Requires consistent moisture throughout the growing season. Water stress during flowering can severely reduce yield.",
+        'conditions': "A warm-season crop. Prefers well-drained, light soils. Sensitive to both frost and high temperatures.",
+        'pests': "Bean beetle, aphids. Diseases include anthracnose, bean common mosaic virus, and rust."
+    },
+    'chickpea': {
+        'description': "An annual legume of the family Fabaceae, subfamily Faboideae. Its different types are variously known as gram or Bengal gram, garbanzo or garbanzo bean, or Egyptian pea.",
+        'irrigation': "Typically grown as a rainfed crop in the Rabi season. One pre-sowing irrigation and one at the flowering stage are beneficial in areas with low winter rainfall.",
+        'conditions': "A cool, dry climate crop. Cannot tolerate frost, especially at the flowering stage. Prefers light, well-drained soils.",
+        'pests': "Pod borer (Helicoverpa armigera) is the major pest. Diseases include fusarium wilt, ascochyta blight, and rust."
+    },
+    'coffee': {
+        'description': "A brewed drink prepared from roasted coffee beans, the seeds of berries from certain flowering plants in the Coffea genus.",
+        'irrigation': "Irrigation is crucial, especially for triggering uniform flowering after a dry spell ('blossom showers'). Drip irrigation is widely adopted to conserve water.",
+        'conditions': "Requires a specific altitude, temperature, and rainfall. Prefers rich, well-drained soil and is often grown under shade.",
+        'pests': "Coffee berry borer, white stem borer. Diseases include coffee leaf rust and black rot."
+    }
+}
+
+DISEASE_REMEDIES = {
+    "apple scab": {
+        "description": "A fungal disease that causes olive-green to brown spots on leaves, fruit, and twigs. Severe infections can cause defoliation and disfigured fruit.",
+        "organic": "Prune and destroy infected twigs. Rake up and burn fallen leaves. Spray with sulfur, neem oil, or potassium bicarbonate solutions.",
+        "chemical": "Apply fungicides containing Captan, Myclobutanil, or Mancozeb. Start applications at green tip and continue through petal fall."
+    },
+    "apple black rot": {
+        "description": "A fungal disease causing 'frog-eye' leaf spots, limb cankers, and a firm, brown-to-black rot on the fruit, often starting at the blossom end.",
+        "organic": "Prune out cankered branches. Remove mummified fruit from the tree and the ground. Improve air circulation through pruning.",
+        "chemical": "Fungicides like Captan, Thiophanate-methyl, and Pristine are effective. Apply during the bloom period and as a cover spray."
+    },
+    "apple cedar rust": {
+        "description": "A fungal disease that requires both apple and cedar/juniper trees to complete its life cycle. It creates bright orange-yellow spots on apple leaves and fruit.",
+        "organic": "Remove nearby cedar and juniper trees if possible. Apply sulfur or neem oil sprays. Plant rust-resistant apple varieties.",
+        "chemical": "Fungicides containing Myclobutanil or Ferbam are effective. Apply from pink bud stage until mid-summer."
+    },
+    "corn gray leaf spot": {
+        "description": "A fungal disease characterized by long, narrow, rectangular, tan-colored lesions that run parallel to the leaf veins.",
+        "organic": "Use resistant corn hybrids. Practice crop rotation with non-host crops. Tillage to bury infected crop residue.",
+        "chemical": "Apply fungicides such as Pyraclostrobin, Azoxystrobin, or Propiconazole, especially if the disease is present on upper leaves during tasseling."
+    },
+    "corn common rust": {
+        "description": "Caused by a fungus, it appears as small, cinnamon-brown, powdery pustules on both upper and lower leaf surfaces.",
+        "organic": "Plant resistant hybrids. Early planting can sometimes help the crop mature before rust becomes severe.",
+        "chemical": "Foliar fungicides (e.g., Propiconazole, Azoxystrobin) are effective but often not economically necessary unless the infection is severe on a susceptible hybrid."
+    },
+    "corn northern leaf blight": {
+        "description": "A fungal disease that produces long, elliptical, grayish-green or tan lesions on the leaves, leading to significant yield loss.",
+        "organic": "Plant resistant hybrids. Crop rotation and tillage to reduce residue are key management practices.",
+        "chemical": "Fungicide applications with products containing Pyraclostrobin or Propiconazole can be effective if applied early."
+    },
+    "grape black rot": {
+        "description": "A serious fungal disease of grapes. It attacks all green parts of the vine – leaves, shoots, tendrils, and fruit. The fruit turns black, hard, and mummified.",
+        "organic": "Sanitation is crucial: remove and destroy all mummified fruit and infected canes. Improve air circulation. Apply copper or sulfur sprays.",
+        "chemical": "Apply fungicides like Mancozeb, Captan, or Myclobutanil. Start sprays before bloom and continue until fruit begins to color."
+    },
+    "grape esca (black measles)": {
+        "description": "A complex fungal disease that causes a slow decline of the vine. Symptoms include tiger-striped patterns on leaves and small, dark spots on berries.",
+        "organic": "Prune out and destroy infected or dead wood. Double pruning (late initial pruning followed by a second pass) can sometimes help. No effective organic sprays.",
+        "chemical": "Currently, there are no highly effective chemical treatments. Management relies on surgical removal of infected wood."
+    },
+    "grape leaf blight": {
+        "description": "Also known as Isariopsis leaf spot, this fungal disease causes dark brown, irregular spots on leaves, which may develop a yellow halo.",
+        "organic": "Improve air circulation through proper pruning and canopy management. Rake and destroy fallen leaves.",
+        "chemical": "Fungicides used for black rot and downy mildew (e.g., Mancozeb) are typically effective against leaf blight as well."
+    },
+    "potato early blight": {
+        "description": "A fungal disease that causes dark, target-like spots on lower, older leaves. Lesions can also appear on stems and tubers.",
+        "organic": "Crop rotation, proper plant spacing for air circulation, and destroying infected crop debris. Copper-based fungicides can be used.",
+        "chemical": "Apply fungicides such as Chlorothalonil, Mancozeb, or Azoxystrobin preventively, especially during warm, humid conditions."
+    },
+    "potato late blight": {
+        "description": "A devastating water mold disease that causes large, dark, water-soaked lesions on leaves and stems. It can destroy an entire crop rapidly.",
+        "organic": "Plant certified disease-free seed potatoes. Ensure good drainage. Destroy volunteer potato plants. Copper sprays have some effect if applied preventively.",
+        "chemical": "Aggressive fungicide programs are essential. Use products like Chlorothalonil, Mancozeb, and specialized products like Ridomil (Mefenoxam) for systemic control."
+    },
+    "tomato bacterial spot": {
+        "description": "A bacterial disease causing small, water-soaked, dark spots on leaves and fruit. The spots on leaves may have a yellow halo.",
+        "organic": "Use disease-free seed and transplants. Rotate crops. Avoid overhead irrigation. Sprays with copper-based bactericides can help suppress the disease.",
+        "chemical": "Preventive applications of copper mixed with Mancozeb. Some growers use products containing Acibenzolar-S-methyl to boost plant defenses."
+    },
+    "tomato early blight": {
+        "description": "A fungal disease that appears as dark, target-like spots on lower leaves, often accompanied by yellowing. Can also cause stem lesions.",
+        "organic": "Prune lower leaves. Mulch around the base of plants. Use drip irrigation. Copper and bio-fungicides (Bacillus subtilis) can be effective.",
+        "chemical": "Fungicides containing Chlorothalonil, Mancozeb, or Azoxystrobin. Begin applications when conditions are favorable for disease."
+    },
+    "tomato late blight": {
+        "description": "The same water mold that affects potatoes. It causes large, greasy, grey-green spots on leaves that quickly turn brown. A white fuzzy mold may appear on the underside.",
+        "organic": "Ensure good air circulation. Avoid overhead watering. Copper sprays can provide some protection if applied before the disease appears.",
+        "chemical": "Requires a strict fungicide schedule. Products include Chlorothalonil, Mancozeb, and specialized systemic fungicides."
+    },
+    "tomato leaf mold": {
+        "description": "A fungal disease that primarily affects greenhouse tomatoes. It causes pale green or yellowish spots on the upper leaf surface and olive-green to brown velvety mold on the underside.",
+        "organic": "Improve ventilation and reduce humidity. Prune lower leaves. Plant resistant varieties.",
+        "chemical": "Fungicides like Chlorothalonil or those containing Strobilurins can be effective."
+    },
+    "tomato septoria leaf spot": {
+        "description": "A fungal disease that causes numerous small, circular spots with dark borders and tan centers on the lower leaves. Small black dots (pycnidia) can be seen in the centers.",
+        "organic": "Remove and destroy infected lower leaves. Mulch heavily. Use drip irrigation. Copper-based sprays can help.",
+        "chemical": "Apply fungicides containing Chlorothalonil or Mancozeb."
+    },
+    "tomato spider mites": {
+        "description": "Not a disease, but a pest. These tiny arachnids suck cell contents from leaves, causing a fine, yellowish stippling. Fine webbing may be visible on the underside of leaves.",
+        "organic": "A strong jet of water can dislodge them. Release predatory mites. Apply insecticidal soap or neem oil.",
+        "chemical": "Use miticides like Abamectin or Spiromesifen. Rotate chemical classes to prevent resistance."
+    },
+    "tomato target spot": {
+        "description": "A fungal disease causing small, water-soaked spots on leaves that enlarge into target-like lesions with concentric rings.",
+        "organic": "Improve air circulation. Mulch the soil. Avoid overhead irrigation. Copper fungicides can be used.",
+        "chemical": "Fungicides such as Chlorothalonil, Mancozeb, or those in the Strobilurin class are effective."
+    },
+    "tomato yellow leaf curl virus": {
+        "description": "A viral disease transmitted by whiteflies. It causes severe stunting, upward curling and yellowing of leaves, and reduced fruit set.",
+        "organic": "Control whitefly populations using yellow sticky traps, neem oil, or insecticidal soap. Remove and destroy infected plants immediately.",
+        "chemical": "Use systemic insecticides like Imidacloprid to control whiteflies. There is no cure for the virus itself."
+    },
+    "tomato mosaic virus": {
+        "description": "A viral disease causing a mosaic of light green and yellow patterns on the leaves, along with some distortion and stunting.",
+        "organic": "There is no cure. Practice good sanitation. Wash hands before handling plants. Remove and destroy infected plants. Do not use tobacco products near tomato plants.",
+        "chemical": "No chemical cure. Management focuses on preventing transmission by controlling aphids and practicing good hygiene."
+    }
+}
+# =====================================================================================
+# 2. SESSION STATE INITIALIZATION
+# =====================================================================================
+if 'lang' not in st.session_state:
+    st.session_state['lang'] = 'en'
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = None
+
+def t(key, **kwargs):
+    lang = st.session_state.get('lang', 'en')
+    lang_dict = translations.get(lang, translations['en'])
+    text = lang_dict.get(key, translations['en'].get(key, key))
+    return text.format(**kwargs) if kwargs else text
+
+def set_login_language():
+    st.session_state.lang = st.session_state.login_lang_selector
+
+# =====================================================================================
+# 3. MONGODB AND AUTHENTICATION SETUP (Updated with Forum collections and functions)
+# =====================================================================================
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+@st.cache_resource
+def init_connection():
+    try:
+        uri = st.secrets["mongo_uri"]
+        client = pymongo.MongoClient(uri)
+        return client
+    except Exception as e:
+        st.error(f"Failed to connect to MongoDB. Please ensure your connection string is correctly configured in secrets.toml. Error: {e}")
+        return None
+
+client = init_connection()
+
+if client:
+    db = client.krishisakhi_db
+    users_collection = db.users
+    user_logs_collection = db.user_logs
+    forum_posts_collection = db.forum_posts
+    forum_replies_collection = db.forum_replies
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def user_exists(username: str):
+    if client:
+        return users_collection.find_one({"username": username}) is not None
+    return False
+
+def add_user(username: str, password: str, full_name: str):
+    if client and not user_exists(username):
+        hashed_pass = hash_password(password)
+        users_collection.insert_one({
+            "username": username,
+            "password": hashed_pass,
+            "full_name": full_name,
+            "profile_pic_base64": "",
+            "contact_number": "" 
+        })
+        return True
+    return False
+
+def get_user_details(username: str):
+    if client:
+        return users_collection.find_one({"username": username})
+    return None
+
+def update_user_profile(current_username, updates):
+    if not client:
+        return False
+        
+    if 'username' in updates and updates['username'] != current_username:
+        if user_exists(updates['username']):
+            return False 
+    
+    if 'password' in updates and updates['password']:
+        updates['password'] = hash_password(updates['password'])
+    else:
+        updates.pop('password', None)
+        
+    users_collection.update_one({"username": current_username}, {"$set": updates})
+    return True
+
+def delete_user(username: str):
+    if client:
+        users_collection.delete_one({"username": username})
+        user_logs_collection.delete_many({"username": username})
+
+
+def authenticate_user(username: str, password: str):
+    if client:
+        user = users_collection.find_one({"username": username})
+        if user and verify_password(password, user["password"]):
+            st.session_state['username'] = user['username']
+            st.session_state['full_name'] = user.get('full_name', '')
+            st.session_state['profile_pic'] = user.get('profile_pic_base64', '')
+            st.session_state['contact_number'] = user.get('contact_number', '')
+            st.session_state['authenticated'] = True
+            return True
+    return False
+
+def add_log_entry(username, entry, images_b64=None, videos_b64=None):
+    if client:
+        log_data = {
+            "username": username,
+            "entry": entry,
+            "timestamp": datetime.datetime.utcnow(),
+            "images_b64": images_b64 or [],
+            "videos_b64": videos_b64 or []
+        }
+        user_logs_collection.insert_one(log_data)
+        return True
+    return False
+
+def get_user_logs(username):
+    if client:
+        return user_logs_collection.find({"username": username}).sort("timestamp", -1)
+    return []
+
+def delete_log_entry(log_id, username):
+    if client:
+        result = user_logs_collection.delete_one({"_id": ObjectId(log_id), "username": username})
+        return result.deleted_count > 0
+    return False
+
+# --- New Forum Database Functions ---
+def add_forum_post(username, full_name, title, content, image_b64=None):
+    if client:
+        post_data = {
+            "username": username,
+            "full_name": full_name,
+            "title": title,
+            "content": content,
+            "image_b64": image_b64,
+            "timestamp": datetime.datetime.utcnow(),
+            "likes": []
+        }
+        forum_posts_collection.insert_one(post_data)
+        return True
+    return False
+
+def get_all_forum_posts():
+    if client:
+        return list(forum_posts_collection.find().sort("timestamp", -1))
+    return []
+
+def toggle_like_post(post_id, username):
+    if client:
+        post = forum_posts_collection.find_one({"_id": ObjectId(post_id)})
+        if post:
+            if username in post['likes']:
+                forum_posts_collection.update_one({"_id": ObjectId(post_id)}, {"$pull": {"likes": username}})
+            else:
+                forum_posts_collection.update_one({"_id": ObjectId(post_id)}, {"$addToSet": {"likes": username}})
+            return True
+    return False
+
+def add_forum_reply(post_id, username, full_name, content):
+    if client:
+        reply_data = {
+            "post_id": ObjectId(post_id),
+            "username": username,
+            "full_name": full_name,
+            "content": content,
+            "timestamp": datetime.datetime.utcnow()
+        }
+        forum_replies_collection.insert_one(reply_data)
+        return True
+    return False
+
+def get_replies_for_post(post_id):
+    if client:
+        return list(forum_replies_collection.find({"post_id": ObjectId(post_id)}).sort("timestamp", 1))
+    return []
+
+# =====================================================================================
+# 4. APP CONFIGURATION AND DATA/MODEL LOADING
+# =====================================================================================
+st.set_page_config(page_title=t('app_title'), page_icon="🌱", layout="wide", initial_sidebar_state="expanded")
+
+@st.cache_data
+def load_and_update_data(filepath):
+    df = pd.read_csv(filepath)
+    if 'Fertiliser' not in df.columns or 'Duration (Days)' not in df.columns:
+        new_data = {
+            "Paddy (Rice) - Virippu": {"Fertiliser": "70:35:35", "Duration (Days)": "110-120"},
+            "Paddy (Rice) - Mundakan": {"Fertiliser": "90:45:45", "Duration (Days)": "120-140"},
+            "Paddy (Rice) - Puncha": {"Fertiliser": "70:35:35", "Duration (Days)": "90-110"},
+            "Coconut": {"Fertiliser": "500:320:1200 g/plant", "Duration (Days)": "Perennial"},
+            "Rubber": {"Fertiliser": "NPKMg 12:12:12:5", "Duration (Days)": "Perennial"},
+            "Banana (Plantain)": {"Fertiliser": "190:110:300 g/plant", "Duration (Days)": "270-365"},
+            "Tapioca (Cassava)": {"Fertiliser": "50:50:100", "Duration (Days)": "240-300"},
+            "Black Pepper": {"Fertiliser": "100:40:140 g/vine", "Duration (Days)": "Perennial"},
+            "Cardamom": {"Fertiliser": "75:75:150", "Duration (Days)": "Perennial"},
+            "Tea (high ranges)": {"Fertiliser": "Varies by soil", "Duration (Days)": "Perennial"},
+            "Coffee (Robusta/Arabica)": {"Fertiliser": "120:90:120", "Duration (Days)": "Perennial"},
+            "Maize (Kharif)": {"Fertiliser": "120:60:40", "Duration (Days)": "90-110"},
+            "Tomato": {"Fertiliser": "75:40:25", "Duration (Days)": "90-120"},
+            "Okra (Lady's finger)": {"Fertiliser": "75:40:25", "Duration (Days)": "60-70"},
+            "Brinjal (Eggplant)": {"Fertiliser": "100:50:50", "Duration (Days)": "120-140"},
+            "Cauliflower": {"Fertiliser": "120:60:60", "Duration (Days)": "90-120"},
+            "Cabbage": {"Fertiliser": "150:80:80", "Duration (Days)": "80-100"},
+            "Pumpkin": {"Fertiliser": "60:80:80", "Duration (Days)": "90-120"},
+        }
+        df['Fertiliser'] = df['Crop'].map(lambda x: new_data.get(x, {}).get('Fertiliser', 'N/A'))
+        df['Duration (Days)'] = df['Crop'].map(lambda x: new_data.get(x, {}).get('Duration (Days)', 'N/A'))
+        df.to_csv(filepath, index=False)
+    return df
+
+@st.cache_resource
+def load_crop_model():
+    with open('crop_recommendation_model.pkl', 'rb') as file:
+        return pickle.load(file)
+
+@st.cache_resource
+def load_yield_prediction_assets():
+    with open('yield_prediction_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('label_encoders.pkl', 'rb') as f:
+        le_state, le_crop, le_season = pickle.load(f)
+    df_yield = pd.read_csv('kerala_yield_prediction_dataset.csv')
+    unique_crops = sorted(df_yield['Crop'].unique())
+    unique_seasons = sorted(df_yield['Season'].unique())
+    return model, le_state, le_crop, le_season, unique_crops, unique_seasons
+
+@st.cache_resource
+def load_leaf_disease_model():
+    try:
+        model = tf.keras.models.load_model('leaf_disease_model.h5')
+        return model
+    except (IOError, FileNotFoundError):
+        return None
+
+def get_weather(city, api_key):
+    url = "https://api.openweathermap.org/data/2.5/forecast"
+    params = {'q': city, 'appid': api_key, 'units': 'metric'}
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None
+
+CROP_MAP = {
+    'Paddy': 'Paddy(Dhan)(Common)', 'Rice': 'Paddy(Dhan)(Common)', 'Wheat': 'Wheat',
+    'Maize': 'Maize', 'Gram': 'Bengal Gram(Gram)(Raw)', 'Moong(Green Gram)': 'Green Gram (Moong)(Whole)',
+    'Rapeseed &Mustard': 'Mustard', 'Soyabean': 'Soyabean', 'Tomato': 'Tomato',
+    'Potato': 'Potato', 'Onion': 'Onion', 'Banana': 'Banana',
+    'Arhar/Tur': 'Arhar (Tur/Red Gram)(Whole)', 'Lentil': 'Lentil (Masur)(Whole)',
+    'Groundnut': 'Groundnut', 'Sunflower': 'Sunflower', 'Cotton(lint)': 'Cotton',
+    'Jute': 'Jute', 'Garlic': 'Garlic', 'Ginger': 'Ginger(Dry)', 'Dry chillies': 'Dry Chillies'
+}
+
+def get_market_price(crop_name, api_key):
+    commodity = CROP_MAP.get(crop_name, crop_name)
+    url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
+    params = {
+        "api-key": api_key,
+        "format": "json",
+        "filters[commodity]": commodity,
+        "limit": 50
+    }
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            records = data.get('records', [])
+            if not records:
+                return None
+            total_price = 0
+            count = 0
+            for record in records:
+                try:
+                    total_price += int(record['modal_price'])
+                    count += 1
+                except (ValueError, TypeError):
+                    continue
+            return total_price / count if count > 0 else None
+        else:
+            return None
+    except requests.exceptions.RequestException:
+        return None
+
+def transcribe_audio_api(audio_bytes):
+    API_URL = "https://transcribe.whisperapi.com"
+    files = {'file': ('audio.wav', audio_bytes, 'audio/wav')}
+    try:
+        response = requests.post(API_URL, files=files, timeout=30)
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("text")
+    except requests.exceptions.RequestException:
+        return None
+    return None
+
+# =====================================================================================
+# 5. LANDING / AUTHENTICATION PAGE
+# =====================================================================================
+if not st.session_state.get('authenticated', False):
+    st.title(t('login_page_title'))
+    st.selectbox(
+        label=t('language_selector_label'),
+        options=['en', 'hi', 'ml', 'ta', 'te'],
+        format_func=lambda x: {'en': 'English', 'hi': 'हिन्दी', 'ml': 'മലയാളം', 'ta': 'தமிழ்', 'te': 'తెలుగు'}[x],
+        key='login_lang_selector',
+        on_change=set_login_language
+    )
+    login_tab, signup_tab = st.tabs([t('login_tab'), t('signup_tab')])
+    with login_tab:
+        with st.form("login_form"):
+            username = st.text_input(t('username_label'))
+            password = st.text_input(t('password_label'), type="password")
+            submitted = st.form_submit_button(t('login_button'))
+            if submitted:
+                if authenticate_user(username, password):
+                    st.rerun()
+                else:
+                    st.error(t('login_error'))
+    with signup_tab:
+        with st.form("signup_form"):
+            full_name = st.text_input(t('full_name_label'), key="signup_fullname")
+            new_username = st.text_input(t('username_label'), key="signup_username")
+            new_password = st.text_input(t('password_label'), type="password", key="signup_password")
+            submitted = st.form_submit_button(t('signup_button'))
+            if submitted:
+                if not full_name or not new_username or not new_password:
+                    st.warning("All fields are required.")
+                elif user_exists(new_username):
+                    st.error(t('signup_error_exists'))
+                else:
+                    try:
+                        if add_user(new_username, new_password, full_name):
+                            st.success(t('signup_success'))
+                        else:
+                            st.error(t('signup_error_general'))
+                    except Exception as e:
+                        st.error(f"{t('signup_error_general')}: {e}")
+
+# =====================================================================================
+# 6. MAIN APPLICATION
+# =====================================================================================
+else:
+    # Load models and data
+    crop_model = load_crop_model()
+    yield_model, le_state, le_crop, le_season, unique_crops, unique_seasons = load_yield_prediction_assets()
+    leaf_disease_model = load_leaf_disease_model()
+    kerala_crops_df = load_and_update_data('kerala_crops.csv')
+
+    # --- SIDEBAR ---
+    with st.sidebar:
+        st.title("🌿 KrishiSakhi")
+        
+        profile_pic_data = st.session_state.get('profile_pic', '')
+        if profile_pic_data:
+            try:
+                st.image(base64.b64decode(profile_pic_data), use_container_width=True, caption=st.session_state.get('full_name', ''))
+            except Exception:
+                 st.markdown("""<div style="display: flex; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("""<div style="display: flex; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>""", unsafe_allow_html=True)
+        st.info(t('welcome_back', username=st.session_state.get('full_name', 'Farmer')))
+        
+        def set_language():
+            st.session_state['lang'] = st.session_state['lang_selector']
+            st.session_state.chat_history = []
+        st.selectbox(label=t('language_selector_label'), options=['en', 'hi', 'ml', 'ta', 'te'], format_func=lambda x: {'en': 'English', 'hi': 'हिन्दी', 'ml': 'മലയാളം', 'ta': 'தமிழ்', 'te': 'తెలుగు'}[x], key='lang_selector', on_change=set_language)
+        
+        PAGES_KEYS = {
+            'page_home': "Home", 'page_profile': "Profile", 'page_logs': "Logs", 'page_crop_recommendation': "Crop Recommendation",
+            'page_yield_prediction': "Yield Prediction", 'page_crop_calendar': "Crop Calendar", 'page_crop_guide': "Crop Guide",
+            'page_weather_report': "Weather Report", 'page_leaf_disease_prediction': "Leaf Disease Prediction",
+            'page_pest_prediction': "Pest Prediction",
+            'page_translator': "Translator", 'page_ai_chatbot': "AI Chatbot", 'page_community_forum': "Community Forum"
+        }
+        pages_translated = {t(key): value for key, value in PAGES_KEYS.items()}
+        selected_page_translated = st.radio(t('go_to'), list(pages_translated.keys()), key="page_selector")
+        page = pages_translated[selected_page_translated]
+        
+        st.divider()
+        st.subheader(t('feedback_header'))
+        rating = st.slider(t('rating_label'), 1, 5, 5, label_visibility="collapsed", format="%d ⭐")
+        if st.button(t('submit_button')):
+            st.success(t('feedback_success'))
+        
+        st.divider()
+        st.subheader(t('contact_header'))
+        st.markdown("""
+        # **Agrisakhi**
+        📧 agrisakhi@gmail.com
+                    
+        📞 +91 6297648920
+        """)
+        
+        st.divider()
+        if st.button(t('logout_button')):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
+    # --- PAGE CONTENT ---
+    if page == "Home":
+        st.title(t('home_title'))
+        st.write(t('home_subtitle'))
+        st.divider()
+        num_languages = len(translations)
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric(label=t('languages_supported_label'), value=num_languages)
+        col2.metric(label=t('farmers_helped_label'), value="1,500+")
+        col3.metric(label=t('crops_covered_label'), value="20+")
+        col4.metric(label=t('recommendations_given_label'), value="10,000+")
+        st.divider()
+        st.markdown(t('home_intro'))
+
+    elif page == "Profile":
+        st.header(t('profile_header'))
+        st.write(t('profile_subheader'))
+
+        with st.form("profile_form"):
+            full_name = st.text_input(t('full_name_label'), value=st.session_state.get('full_name', ''))
+            contact_number = st.text_input(t('contact_number_label'), value=st.session_state.get('contact_number', ''))
+            new_username = st.text_input(t('new_username_label'), value=st.session_state.get('username', ''))
+            
+            uploaded_pic = st.file_uploader(t('profile_pic_label'), type=['png', 'jpg', 'jpeg'])
+            
+            new_password = st.text_input(t('new_password_label'), type="password", placeholder="Enter new password (optional)")
+            confirm_password = st.text_input(t('confirm_password_label'), type="password", placeholder="Confirm new password")
+            
+            submitted = st.form_submit_button(t('update_profile_button'))
+            
+            if submitted:
+                updates = {}
+                if new_password and new_password != confirm_password:
+                    st.error(t('password_mismatch_error'))
+                else:
+                    if full_name != st.session_state.get('full_name', ''):
+                        updates['full_name'] = full_name
+                    if contact_number != st.session_state.get('contact_number', ''):
+                        updates['contact_number'] = contact_number
+                    if new_username != st.session_state.get('username', ''):
+                        updates['username'] = new_username
+                    if new_password:
+                        updates['password'] = new_password
+                    if uploaded_pic is not None:
+                        bytes_data = uploaded_pic.getvalue()
+                        updates['profile_pic_base64'] = base64.b64encode(bytes_data).decode()
+
+                    if not updates:
+                        st.info("No changes were made.")
+                    else:
+                        if update_user_profile(st.session_state['username'], updates):
+                            st.success(t('profile_update_success'))
+                            if 'username' in updates:
+                                st.session_state['username'] = updates['username']
+                            if 'full_name' in updates:
+                                st.session_state['full_name'] = updates['full_name']
+                            if 'contact_number' in updates:
+                                st.session_state['contact_number'] = updates['contact_number']
+                            if 'profile_pic_base64' in updates:
+                                st.session_state['profile_pic'] = updates['profile_pic_base64']
+                            st.rerun()
+                        else:
+                            st.error(t('profile_update_error'))
+
+        st.divider()
+        st.subheader(t('danger_zone_header'))
+        st.error(t('delete_account_warning'))
+
+        if st.button(t('delete_account_button'), type="secondary", key="initiate_delete"):
+            st.session_state['delete_pressed'] = True
+        
+        if st.session_state.get('delete_pressed'):
+            confirmation = st.text_input(t('delete_confirmation_label'))
+            if st.button(t('delete_account_confirm_button'), type="primary"):
+                if confirmation == "DELETE":
+                    delete_user(st.session_state['username'])
+                    st.success(t('account_deleted_success'))
+                    for key in list(st.session_state.keys()):
+                        del st.session_state[key]
+                    st.rerun()
+                else:
+                    st.warning(t('incorrect_delete_confirmation'))
+
+    elif page == "Logs":
+        st.header(t('logs_header'))
+        st.write(t('logs_intro'))
+
+        if 'log_input_text' not in st.session_state:
+            st.session_state.log_input_text = ""
+
+        st.write(t('record_log_prompt'))
+        
+        class AudioProcessor(AudioProcessorBase):
+            def __init__(self) -> None:
+                self.audio_buffer = io.BytesIO()
+                self.lock = threading.Lock()
+
+            def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
+                with self.lock:
+                    self.audio_buffer.write(frame.to_ndarray().tobytes())
+                return frame
+
+        webrtc_ctx = webrtc_streamer(
+            key="audio-recorder",
+            mode=WebRtcMode.SENDONLY,
+            audio_processor_factory=AudioProcessor,
+            media_stream_constraints={"video": False, "audio": True},
+        )
+        
+        if not webrtc_ctx.state.playing and st.session_state.get("audio_buffer"):
+            with st.spinner(t('transcribing_audio')):
+                audio_buffer = st.session_state.get("audio_buffer")
+                if audio_buffer:
+                    try:
+                        # Convert raw PCM audio to a WAV file in memory
+                        audio_buffer.seek(0)
+                        raw_data = audio_buffer.read()
+                        
+                        wav_io = io.BytesIO()
+                        with wave.open(wav_io, 'wb') as wf:
+                            wf.setnchannels(1)  # Mono
+                            wf.setsampwidth(2)  # 16-bit
+                            wf.setframerate(16000) # 16k sample rate
+                            wf.writeframes(raw_data)
+                        wav_io.seek(0)
+
+                        recognized_text = transcribe_audio_api(wav_io.getvalue())
+                        
+                        if recognized_text:
+                            st.session_state.log_input_text += recognized_text + " "
+                        else:
+                            st.warning(t('transcription_error'))
+                        
+                        st.session_state["audio_buffer"] = None # Clear buffer
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"An error occurred during audio processing: {e}")
+
+        if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
+            st.session_state["audio_buffer"] = webrtc_ctx.audio_processor.audio_buffer
+
+        with st.form("log_form"):
+            log_entry_text = st.text_area(t('new_log_label'), value=st.session_state.log_input_text, height=150, key="log_text_area")
+            
+            uploaded_files = st.file_uploader(
+                t('upload_media_label'),
+                type=['png', 'jpg', 'jpeg', 'mp4', 'mov', 'avi'],
+                accept_multiple_files=True
+            )
+
+            submitted = st.form_submit_button(t('save_log_button'))
+            if submitted:
+                images_b64 = []
+                videos_b64 = []
+                
+                for uploaded_file in uploaded_files:
+                    bytes_data = uploaded_file.read()
+                    b64_data = base64.b64encode(bytes_data).decode()
+                    mime_type = uploaded_file.type
+
+                    if "image" in mime_type:
+                        images_b64.append(f"data:{mime_type};base64,{b64_data}")
+                    elif "video" in mime_type:
+                        videos_b64.append(f"data:{mime_type};base64,{b64_data}")
+
+                if log_entry_text or images_b64 or videos_b64:
+                    if add_log_entry(st.session_state['username'], log_entry_text, images_b64=images_b64, videos_b64=videos_b64):
+                        st.session_state.log_input_text = "" # Clear text on save
+                        st.success(t('log_saved_success'))
+                        st.rerun()
+                    else:
+                        st.error("Failed to save log entry.")
+        
+        st.divider()
+        st.subheader(t('past_logs_header'))
+        
+        logs = list(get_user_logs(st.session_state['username']))
+        if logs:
+            for log in logs:
+                with st.container(border=True):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        utc = timezone('UTC')
+                        ist = timezone('Asia/Kolkata')
+                        utc_time = log['timestamp'].replace(tzinfo=utc)
+                        ist_time = utc_time.astimezone(ist)
+                        st.caption(ist_time.strftime("%A, %B %d, %Y at %I:%M %p IST"))
+                        if log.get("entry"):
+                            st.write(log['entry'])
+                        
+                        if log.get("images_b64"):
+                            st.write(f"**{t('attached_images')}**")
+                            for img_b64 in log.get("images_b64"):
+                                st.image(img_b64)
+                        
+                        if log.get("videos_b64"):
+                            st.write(f"**{t('attached_videos')}**")
+                            for vid_b64 in log.get("videos_b64"):
+                                st.video(vid_b64)
+
+                    with col2:
+                        if st.button(t('delete_log_button'), key=f"delete_{log['_id']}", type="secondary"):
+                            delete_log_entry(str(log['_id']), st.session_state['username'])
+                            st.toast(t('log_deleted_success'))
+                            st.rerun()
+        else:
+            st.info(t('no_logs_message'))
+
+    elif page == "Crop Recommendation":
+        st.header(t('crop_rec_header'))
+        st.write(t('crop_rec_intro'))
+        
+        if 'last_crop_recommendation' not in st.session_state:
+            st.session_state['last_crop_recommendation'] = None
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            n = st.number_input(t('nitrogen_label'), 0, 140, 90)
+            p = st.number_input(t('phosphorus_label'), 5, 145, 42)
+            k = st.number_input(t('potassium_label'), 5, 205, 43)
+        with col2:
+            temp = st.number_input(t('temperature_label'), 8.0, 44.0, 20.88, format="%.2f")
+            humidity = st.number_input(t('humidity_label'), 14.0, 100.0, 82.00, format="%.2f")
+            ph = st.number_input(t('ph_label'), 3.5, 9.9, 6.50, format="%.2f")
+        with col3:
+            rainfall = st.number_input(t('rainfall_label'), 20.0, 299.0, 202.94, format="%.2f")
+        
+        if st.button(t('recommend_crop_button')):
+            prediction = crop_model.predict(np.array([[n, p, k, temp, humidity, ph, rainfall]]))
+            st.session_state['last_crop_recommendation'] = prediction[0]
+
+        if st.session_state['last_crop_recommendation']:
+            recommended_crop = st.session_state['last_crop_recommendation']
+            st.success(t('recommendation_success', crop=recommended_crop.title()))
+            
+            st.divider()
+            st.subheader(t('crop_info_header', crop=recommended_crop.title()))
+
+            crop_data = CROP_INFO.get(recommended_crop.lower())
+            if crop_data:
+                with st.container(border=True):
+                    st.markdown(f"**{t('description_heading')}**")
+                    st.write(crop_data['description'])
+                    
+                    st.markdown(f"**{t('irrigation_heading')}**")
+                    st.write(crop_data['irrigation'])
+
+                    st.markdown(f"**{t('conditions_heading')}**")
+                    st.write(crop_data['conditions'])
+
+                    st.markdown(f"**{t('pests_heading')}**")
+                    st.write(crop_data['pests'])
+            else:
+                st.info(f"Detailed information for {recommended_crop.title()} is not yet available.")
+
+    elif page == "Crop Guide":
+        st.header(t('crop_guide_title'))
+
+        try:
+            # Load the fertigation and irrigation data from the CSV file
+            df_guide = pd.read_csv('kerala_fertigation_irrigation.csv')
+        except FileNotFoundError:
+            st.error(t('file_not_found_error'))
+        else:
+            # Create a dropdown for the user to select a crop
+            unique_crops = sorted(df_guide['Crop'].unique())
+            selected_crop = st.selectbox(t('select_crop_label'), options=unique_crops, key='guide_crop_selection')
+
+            if selected_crop:
+                # Filter the dataframe based on the selected crop
+                crop_specific_df = df_guide[df_guide['Crop'] == selected_crop]
+                
+                # Create a second dropdown for the growth stage, based on the chosen crop
+                unique_stages = crop_specific_df['Stage'].unique()
+                selected_stage = st.selectbox(t('select_stage_label'), options=unique_stages, key='guide_stage_selection')
+
+                if selected_stage:
+                    # Filter the dataframe again for the selected stage
+                    stage_specific_df = crop_specific_df[crop_specific_df['Stage'] == selected_stage]
+
+                    st.subheader(t('guide_table_header'))
+                    
+                    # Define which columns to show in the final table
+                    columns_to_display = [
+                        'Days Range', 
+                        'Fertilizer', 
+                        'Dosage (kg/acre)', 
+                        'Frequency', 
+                        'Irrigation Depth / Volume', 
+                        'Irrigation Frequency'
+                    ]
+                    
+                    # Display the final, filtered data in a clean table
+                    st.dataframe(
+                        stage_specific_df[columns_to_display].reset_index(drop=True), 
+                        use_container_width=True
+                    )
+
+    elif page == "Yield Prediction":
+        st.header(t('yield_pred_header'))
+        st.write(t('yield_pred_intro'))
+        col1, col2 = st.columns(2)
+        with col1:
+            year = st.number_input(t('year_label'), 2000, 2030, 2025)
+            crop = st.selectbox(t('crop_label'), options=unique_crops)
+        with col2:
+            season = st.selectbox(t('season_label'), options=unique_seasons)
+            area = st.number_input(t('area_label'), 1.0, value=10.0, format="%.2f")
+        
+        if st.button(t('predict_yield_button')):
+            try:
+                features = np.array([[
+                    le_state.transform(['Kerala'])[0],
+                    le_crop.transform([crop])[0],
+                    le_season.transform([season])[0],
+                    year, area
+                ]])
+                total_production = yield_model.predict(features)[0]
+                
+                predicted_yield_per_ha = total_production / area if area > 0 else 0
+                st.success(t('yield_prediction_success', yield_val=predicted_yield_per_ha))
+
+                st.divider()
+                st.subheader(t('market_price_header'))
+                try:
+                    price_api_key = st.secrets["datagov_api_key"]
+                    with st.spinner(t('fetching_prices_spinner')):
+                        market_price = get_market_price(crop, price_api_key)
+                    
+                    if market_price:
+                        total_value = (total_production / 100) * market_price
+                        price_col, value_col = st.columns(2)
+                        price_col.metric(label=t('market_price_label'), value=f"₹ {market_price:,.2f}")
+                        value_col.metric(label=t('total_value_label'), value=f"₹ {total_value:,.2f}")
+                    else:
+                        st.info(t('price_not_available', crop=crop))
+
+                except (KeyError, FileNotFoundError):
+                    st.warning("Market price API key not found in secrets.toml. Please add it to display prices.")
+                except Exception:
+                    st.error(t('price_api_error'))
+            
+            except Exception as e:
+                st.error(f"An error occurred during yield prediction: {e}")
+
+
+    elif page == "Crop Calendar":
+        st.header(t('crop_calendar_header'))
+        selected_crop = st.selectbox(t('select_crop_label'), options=kerala_crops_df['Crop'].unique())
+        if selected_crop:
+            crop_info = kerala_crops_df[kerala_crops_df['Crop'] == selected_crop].iloc[0]
+            st.subheader(t('schedule_for_crop', crop=selected_crop))
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label=t('sowing_start_label'), value=crop_info['Sowing Start (Kerala)'])
+                st.metric(label=t('sowing_end_label'), value=crop_info['Sowing End (Kerala)'])
+            with col2:
+                st.metric(label=t('harvest_start_label'), value=crop_info['Harvest Start (Approx)'])
+                st.metric(label=t('harvest_end_label'), value=crop_info['Harvest End (Approx)'])
+            st.divider()
+            col3, col4 = st.columns(2)
+            with col3:
+                st.metric(label=t('fertiliser_label'), value=crop_info['Fertiliser'])
+            with col4:
+                duration_value = crop_info['Duration (Days)']
+                if "Perennial" not in str(duration_value):
+                    duration_value = f"{duration_value} days"
+                st.metric(label=t('duration_label'), value=duration_value)
+
+    elif page == "Weather Report":
+        st.header(t('weather_report_header'))
+        city = st.text_input(t('enter_city_label'), "Asansol")
+        try:
+            weather_api_key = st.secrets["openweathermap_api_key"]
+        except (KeyError, FileNotFoundError):
+            st.error("OpenWeatherMap API key not found. Please add it to your secrets.toml file.")
+            st.stop()
+        if st.button(t('get_weather_button')):
+            if city:
+                with st.spinner(f"Fetching weather for {city}..."):
+                    weather_data = get_weather(city, weather_api_key)
+                if weather_data:
+                    cod = weather_data.get("cod")
+                    if str(cod) == "200":
+                        try:
+                            current_condition = weather_data['list'][0]
+                            location = f"{weather_data['city']['name']}, {weather_data['city']['country']}"
+                            st.subheader(t('current_weather_in', location=location))
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric(t('temperature_metric'), f"{current_condition['main']['temp']:.1f}°C")
+                            col2.metric(t('feels_like_metric'), f"{current_condition['main']['feels_like']:.1f}°C")
+                            col3.metric(t('humidity_metric'), f"{current_condition['main']['humidity']}%")
+                            st.write(f"**{t('description_label')}** {current_condition['weather'][0]['description'].title()}")
+                            st.write(f"**{t('wind_label')}** {current_condition['wind']['speed'] * 3.6:.1f} km/h")
+                            st.write(f"**{t('precipitation_label')}** {current_condition.get('rain', {}).get('3h', 0)} mm (in last 3h)")
+                            st.subheader(t('forecast_header'))
+                            forecasts_by_day = {}
+                            for forecast in weather_data['list']:
+                                date = datetime.datetime.fromtimestamp(forecast['dt']).date()
+                                if date not in forecasts_by_day:
+                                    forecasts_by_day[date] = []
+                                forecasts_by_day[date].append(forecast)
+                            for i, (day, day_forecasts) in enumerate(forecasts_by_day.items()):
+                                if i > 2:
+                                    break
+                                min_temp = min(f['main']['temp_min'] for f in day_forecasts)
+                                max_temp = max(f['main']['temp_max'] for f in day_forecasts)
+                                outlook = next((f['weather'][0]['description'].title() for f in day_forecasts if '12:00:00' in f['dt_txt']), day_forecasts[0]['weather'][0]['description'].title())
+                                with st.container(border=True):
+                                    st.markdown(f"**{day.strftime('%A, %b %d')}**")
+                                    col1, col2, col3 = st.columns(3)
+                                    sunrise_ts = datetime.datetime.fromtimestamp(weather_data['city']['sunrise'])
+                                    sunset_ts = datetime.datetime.fromtimestamp(weather_data['city']['sunset'])
+                                    col1.write(f"**{t('max_temp_label')}** {max_temp:.1f}°C")
+                                    col1.write(f"**{t('sunrise_label')}** {sunrise_ts.strftime('%H:%M')}")
+                                    col2.write(f"**{t('min_temp_label')}** {min_temp:.1f}°C")
+                                    col2.write(f"**{t('sunset_label')}** {sunset_ts.strftime('%H:%M')}")
+                                    col3.write(f"**{t('outlook_label')}** {outlook}")
+                        except (KeyError, IndexError) as e:
+                            st.error(t('error_parsing_weather', e=e))
+                    else:
+                        message = weather_data.get('message', 'Unknown error.')
+                        if str(cod) == "401":
+                            st.error(t('weather_api_key_error', message=message))
+                        elif str(cod) == "404":
+                            st.error(t('weather_city_not_found_error', message=message))
+                        else:
+                            st.error(t('weather_api_generic_error', cod=cod, message=message))
+                else:
+                    st.error(t('weather_fetch_error'))
+            else:
+                st.warning(t('enter_city_warning'))
+
+    elif page == "Leaf Disease Prediction":
+        st.header(t('leaf_disease_header'))
+        st.write(t('leaf_disease_intro'))
+
+        if 'last_disease_prediction' not in st.session_state:
+            st.session_state['last_disease_prediction'] = None
+
+        if leaf_disease_model is None:
+            st.warning(t('model_not_found_warning'))
+        else:
+            uploaded_file = st.file_uploader(t('uploader_label'), type=["jpg", "jpeg", "png"])
+            if uploaded_file is not None:
+                image = Image.open(uploaded_file)
+                st.image(image, caption=t('uploaded_image_caption'), use_container_width=True)
+                
+                if st.button(t('predict_disease_button')):
+                    with st.spinner(t('predicting_spinner')):
+                        img_resized = image.resize((224, 224))
+                        img_array = np.array(img_resized) / 255.0
+                        img_batch = np.expand_dims(img_array, axis=0)
+                        prediction = leaf_disease_model.predict(img_batch)
+                        predicted_class_index = np.argmax(prediction[0])
+                        CLASS_NAMES = ["Apple Scab", "Apple Black Rot", "Apple Cedar Rust", "Apple Healthy", "Corn Gray Leaf Spot", "Corn Common Rust", "Corn Northern Leaf Blight", "Corn Healthy", "Grape Black Rot", "Grape Esca (Black Measles)", "Grape Leaf Blight", "Grape Healthy", "Potato Early Blight", "Potato Late Blight", "Potato Healthy", "Tomato Bacterial Spot", "Tomato Early Blight", "Tomato Late Blight", "Tomato Leaf Mold", "Tomato Septoria Leaf Spot", "Tomato Spider Mites", "Tomato Target Spot", "Tomato Yellow Leaf Curl Virus", "Tomato Mosaic Virus", "Tomato Healthy"]
+                        st.session_state['last_disease_prediction'] = CLASS_NAMES[predicted_class_index]
+
+            if st.session_state['last_disease_prediction']:
+                predicted_disease = st.session_state['last_disease_prediction']
+                st.success(t('prediction_result', disease=predicted_disease))
+                
+                st.divider()
+                st.subheader(t('remedy_info_header', disease=predicted_disease))
+
+                disease_key = predicted_disease.lower().replace(" ", "_").replace("(", "").replace(")", "")
+                remedy_data = DISEASE_REMEDIES.get(predicted_disease.lower())
+
+                if "healthy" in predicted_disease.lower():
+                    st.info(t('healthy_plant_message'))
+                elif remedy_data:
+                    with st.container(border=True):
+                        st.markdown(f"**{t('disease_description_heading')}**")
+                        st.write(remedy_data['description'])
+                        
+                        st.markdown(f"**{t('organic_remedies_heading')}**")
+                        st.write(remedy_data['organic'])
+
+                        st.markdown(f"**{t('chemical_remedies_heading')}**")
+                        st.write(remedy_data['chemical'])
+                else:
+                    st.info(f"Remedy information for {predicted_disease} is not yet available.")
+
+    elif page == t('page_pest_prediction'):
+        st.header(t('pest_prediction_header'))
+
+        @st.cache_resource
+        def load_pest_model():
+            try:
+                # The path remains the same, as we've just replaced the files inside
+                model_path = "./local_vision_model" 
+                
+                processor = AutoImageProcessor.from_pretrained(model_path)
+                model = AutoModelForImageClassification.from_pretrained(model_path)
+                return processor, model
+            except Exception as e:
+                st.error(f"{t('model_loading_error')}\n\n**Details:** Could not load model from local folder. Please ensure 'local_vision_model' folder is in the same directory as app.py and contains the correct files.\n\n`{e}`")
+                return None, None
+
+        processor, model = load_pest_model()
+
+        if model is not None and processor is not None:
+            uploaded_file_pest = st.file_uploader(t('upload_image_pest'), type=["jpg", "jpeg", "png"])
+            
+            if uploaded_file_pest is not None:
+                col1, col2 = st.columns(2)
+                image = Image.open(uploaded_file_pest).convert("RGB")
+
+                with col1:
+                    st.image(image, caption=t('uploaded_image_caption'), use_container_width=True)
+                
+                with st.spinner(t('prediction_in_progress')):
+                    inputs = processor(images=image, return_tensors="pt")
+                    with torch.no_grad():
+                        outputs = model(**inputs)
+                        logits = outputs.logits
+                    
+                    predicted_class_idx = logits.argmax(-1).item()
+                    # This line now gets a descriptive label, e.g., "n02229544, grasshopper, hopper"
+                    predicted_class = model.config.id2label[predicted_class_idx]
+                    
+                    # This logic correctly extracts the main name (e.g., "grasshopper")
+                    predicted_class_cleaned = predicted_class.split(',')[0].title()
+
+                    probabilities = torch.nn.functional.softmax(logits, dim=-1)
+                    confidence = round(probabilities[0][predicted_class_idx].item() * 100, 2)
+
+                with col2:
+                    st.metric(label=t('prediction_pest'), value=predicted_class_cleaned)
+                    st.metric(label=t('confidence_label'), value=f"{confidence}%")
+
+    elif page == "Translator":
+        st.header(t('translator_header'))
+        text = st.text_area(t('translator_intro'))
+        if st.button(t('translate_button')):
+            if text.strip():
+                try:
+                    st.success(f"🇮🇳 Telugu: {GoogleTranslator(source='auto', target='te').translate(text)}")
+                    st.success(f"🇮🇳 Tamil: {GoogleTranslator(source='auto', target='ta').translate(text)}")
+                    st.success(f"🇮🇳 Malayalam: {GoogleTranslator(source='auto', target='ml').translate(text)}")
+                    st.success(f"🇮🇳 Hindi: {GoogleTranslator(source='auto', target='hi').translate(text)}")
+                except Exception as e:
+                    st.error(t('translation_failed_error', e=e))
+            else:
+                st.warning(t('enter_text_warning'))
+
+    elif page == "AI Chatbot":
+        st.header(t('ai_chatbot_header'))
+        st.markdown("---")
+        chatbot_code = """
+        <iframe src="https://chat.cxgenie.ai?aid=71a90137-4bcc-490a-bdce-5d0d8c894d5b&lang=en"
+            style="width: 100%; height: 700px; border: none;">
+        </iframe>
+        """
+        st.components.v1.html(chatbot_code, height=720)
+        
+    # --- NEW COMMUNITY FORUM PAGE ---
+    elif page == "Community Forum":
+        st.header(t('forum_header'))
+        st.write(t('forum_intro'))
+
+        with st.expander(t('create_post_header')):
+            with st.form("new_post_form", clear_on_submit=True):
+                post_title = st.text_input(t('post_title_label'), placeholder=t('post_title_placeholder'))
+                post_content = st.text_area(t('post_content_label'), placeholder=t('post_content_placeholder'), height=200)
+                post_image = st.file_uploader(t('upload_image_label'), type=['png', 'jpg', 'jpeg'])
+                
+                submitted = st.form_submit_button(t('submit_post_button'))
+                if submitted:
+                    if post_title and post_content:
+                        image_b64 = None
+                        if post_image:
+                            bytes_data = post_image.getvalue()
+                            image_b64 = base64.b64encode(bytes_data).decode()
+                        
+                        add_forum_post(
+                            username=st.session_state['username'],
+                            full_name=st.session_state['full_name'],
+                            title=post_title,
+                            content=post_content,
+                            image_b64=image_b64
+                        )
+                        st.success(t('post_success_message'))
+                        st.rerun()
+                    else:
+                        st.warning("Title and content are required.")
+
+        st.divider()
+        st.subheader(t('all_posts_header'))
+        
+        all_posts = get_all_forum_posts()
+
+        if not all_posts:
+            st.info(t('no_posts_message'))
+        else:
+            for post in all_posts:
+                post_id = str(post['_id'])
+                with st.container(border=True):
+                    # Format timestamp
+                    utc = timezone('UTC')
+                    ist = timezone('Asia/Kolkata')
+                    utc_time = post['timestamp'].replace(tzinfo=utc)
+                    ist_time = utc_time.astimezone(ist)
+                    date_str = ist_time.strftime("%d %b %Y, %I:%M %p")
+
+                    st.markdown(f"#### {post['title']}")
+                    st.caption(t('posted_by', username=post['full_name'], date=date_str))
+                    st.markdown(post['content'])
+
+                    if post.get('image_b64'):
+                        try:
+                            img_data = base64.b64decode(post['image_b64'])
+                            st.image(img_data)
+                        except Exception:
+                            st.warning("Could not display the attached image.")
+
+                    # --- Interaction Buttons (Like & Reply) ---
+                    col1, col2 = st.columns([1, 5])
+                    with col1:
+                        like_count = len(post.get('likes', []))
+                        if st.button(t('like_button', count=like_count), key=f"like_{post_id}"):
+                            toggle_like_post(post_id, st.session_state['username'])
+                            st.rerun()
+                    
+                    with col2:
+                        replies = get_replies_for_post(post_id)
+                        reply_count = len(replies)
+                        
+                        # Use a toggle to show/hide replies
+                        show_replies = st.toggle(
+                            t('view_replies', count=reply_count) if reply_count > 0 else t('reply_button'),
+                            key=f"toggle_{post_id}"
+                        )
+
+                    if show_replies:
+                        # Display existing replies
+                        if replies:
+                            st.markdown(f"**{t('replies_header')}:**")
+                            for reply in replies:
+                                with st.container(border=True):
+                                    reply_utc_time = reply['timestamp'].replace(tzinfo=utc)
+                                    reply_ist_time = reply_utc_time.astimezone(ist)
+                                    reply_date_str = reply_ist_time.strftime("%d %b %Y, %I:%M %p")
+                                    st.caption(t('posted_by', username=reply['full_name'], date=reply_date_str))
+                                    st.write(reply['content'])
+                        
+                        # Form to add a new reply
+                        with st.form(key=f"reply_form_{post_id}", clear_on_submit=True):
+                            reply_content = st.text_input(t('add_reply_placeholder'), key=f"reply_input_{post_id}", label_visibility="collapsed")
+                            reply_submitted = st.form_submit_button(t('submit_reply_button'))
+                            if reply_submitted and reply_content:
+                                add_forum_reply(
+                                    post_id=post_id,
+                                    username=st.session_state['username'],
+                                    full_name=st.session_state['full_name'],
+                                    content=reply_content
+                                )
+                                st.rerun()
